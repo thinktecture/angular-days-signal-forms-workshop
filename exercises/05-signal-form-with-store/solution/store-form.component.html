@@ -1,0 +1,104 @@
+<mat-card class="profile-card">
+  <mat-card-header>
+    <mat-icon mat-card-avatar>person</mat-icon>
+    <mat-card-title>Contact Profile</mat-card-title>
+    <mat-card-subtitle>Signal Forms + NgRx SignalStore</mat-card-subtitle>
+  </mat-card-header>
+
+  <mat-card-content>
+    <form class="profile-form">
+      <div class="form-row">
+        <mat-form-field appearance="outline">
+          <mat-label>First Name</mat-label>
+          <input matInput [formField]="profileForm.firstName" />
+          @if (profileForm.firstName().touched() && profileForm.firstName().invalid()) {
+            <mat-error>{{ profileForm.firstName().errors()[0]?.message }}</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Last Name</mat-label>
+          <input matInput [formField]="profileForm.lastName" />
+          @if (profileForm.lastName().touched() && profileForm.lastName().invalid()) {
+            <mat-error>{{ profileForm.lastName().errors()[0]?.message }}</mat-error>
+          }
+        </mat-form-field>
+      </div>
+
+      <div class="form-row">
+        <mat-form-field appearance="outline">
+          <mat-label>Email</mat-label>
+          <input matInput type="email" [formField]="profileForm.email" />
+          @if (profileForm.email().touched() && profileForm.email().invalid()) {
+            <mat-error>{{ profileForm.email().errors()[0]?.message }}</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Phone</mat-label>
+          <input matInput type="tel" [formField]="profileForm.phone" />
+        </mat-form-field>
+      </div>
+
+      <div class="form-row">
+        <mat-form-field appearance="outline">
+          <mat-label>Company</mat-label>
+          <input matInput [formField]="profileForm.company" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Role</mat-label>
+          <input matInput [formField]="profileForm.role" />
+        </mat-form-field>
+      </div>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Bio</mat-label>
+        <textarea matInput rows="3" [formField]="profileForm.bio"></textarea>
+        <mat-hint>{{ profileForm.bio().value().length }} / 500</mat-hint>
+        @if (profileForm.bio().touched() && profileForm.bio().invalid()) {
+          <mat-error>{{ profileForm.bio().errors()[0]?.message }}</mat-error>
+        }
+      </mat-form-field>
+    </form>
+
+    <!-- Store State Display -->
+    <div class="store-state">
+      <h4>Store State</h4>
+      <p><strong>Full Name:</strong> {{ store.fullName() }}</p>
+      <p><strong>Unsaved Changes:</strong> {{ store.hasUnsavedChanges() ? 'Yes' : 'No' }}</p>
+      <p><strong>Form Valid:</strong> {{ profileForm().valid() ? 'Yes' : 'No' }}</p>
+      @if (store.lastSaved()) {
+        <p><strong>Last Saved:</strong> {{ store.lastSaved() | date: 'medium' }}</p>
+      }
+    </div>
+  </mat-card-content>
+
+  <mat-card-actions align="end">
+    <button
+      mat-button
+      color="warn"
+      (click)="resetForm()"
+      [disabled]="!store.hasUnsavedChanges() || store.loading()"
+    >
+      <mat-icon>undo</mat-icon>
+      Reset
+    </button>
+    @if (store.loading()) {
+      <button mat-raised-button color="primary" disabled>
+        <mat-spinner diameter="20"></mat-spinner>
+        Saving...
+      </button>
+    } @else {
+      <button
+        mat-raised-button
+        color="primary"
+        (click)="saveProfile()"
+        [disabled]="profileForm().invalid() || !store.hasUnsavedChanges()"
+      >
+        <mat-icon>save</mat-icon>
+        Save Profile
+      </button>
+    }
+  </mat-card-actions>
+</mat-card>

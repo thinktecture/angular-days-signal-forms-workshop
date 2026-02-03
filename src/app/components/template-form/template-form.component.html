@@ -1,0 +1,120 @@
+<mat-card class="form-container">
+  <mat-card-header>
+    <mat-card-title>Template-Driven Form</mat-card-title>
+  </mat-card-header>
+  <mat-card-content>
+    <p class="description">
+      This is a classic Angular Template-Driven Form. Your task: Convert this to the new Signal
+      Forms API.
+    </p>
+
+    <form #userForm="ngForm" (ngSubmit)="onSubmit()">
+      <!-- Name Field -->
+      <mat-form-field appearance="outline">
+        <mat-label>Name</mat-label>
+        <input
+          matInput
+          type="text"
+          id="name"
+          name="name"
+          [(ngModel)]="formData.name"
+          required
+          minlength="2"
+          #nameInput="ngModel"
+        />
+        @if (nameInput.invalid && nameInput.touched) {
+          @if (nameInput.errors?.['required']) {
+            <mat-error>Name is required</mat-error>
+          }
+          @if (nameInput.errors?.['minlength']) {
+            <mat-error>Name must be at least 2 characters</mat-error>
+          }
+        }
+      </mat-form-field>
+
+      <!-- Email Field -->
+      <mat-form-field appearance="outline">
+        <mat-label>Email</mat-label>
+        <input
+          matInput
+          type="email"
+          id="email"
+          name="email"
+          [(ngModel)]="formData.email"
+          required
+          email
+          #emailInput="ngModel"
+        />
+        @if (emailInput.invalid && emailInput.touched) {
+          @if (emailInput.errors?.['required']) {
+            <mat-error>Email is required</mat-error>
+          }
+          @if (emailInput.errors?.['email']) {
+            <mat-error>Please enter a valid email address</mat-error>
+          }
+        }
+      </mat-form-field>
+
+      <!-- Age Field -->
+      <mat-form-field appearance="outline">
+        <mat-label>Age</mat-label>
+        <input
+          matInput
+          type="number"
+          id="age"
+          name="age"
+          [(ngModel)]="formData.age"
+          min="0"
+          max="120"
+          #ageInput="ngModel"
+        />
+        @if (ageInput.invalid && ageInput.touched) {
+          @if (ageInput.errors?.['min']) {
+            <mat-error>Age cannot be negative</mat-error>
+          }
+          @if (ageInput.errors?.['max']) {
+            <mat-error>Please enter a valid age</mat-error>
+          }
+        }
+      </mat-form-field>
+
+      <!-- Newsletter Checkbox -->
+      <mat-checkbox name="newsletter" [(ngModel)]="formData.newsletter">
+        Subscribe to newsletter
+      </mat-checkbox>
+
+      <!-- Form Actions -->
+      <div class="form-actions">
+        <button mat-flat-button color="primary" type="submit" [disabled]="userForm.invalid">
+          Submit
+        </button>
+        <button mat-stroked-button type="button" (click)="onReset(userForm)">Reset</button>
+      </div>
+
+      <!-- Debug Info -->
+      <mat-card class="debug-info" appearance="outlined">
+        <mat-card-header>
+          <mat-card-title>Form State (Debug)</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <p><strong>Valid:</strong> {{ userForm.valid }}</p>
+          <p><strong>Dirty:</strong> {{ userForm.dirty }}</p>
+          <p><strong>Touched:</strong> {{ userForm.touched }}</p>
+          <h4>Form Value</h4>
+          <pre>{{ userForm.value | json }}</pre>
+        </mat-card-content>
+      </mat-card>
+    </form>
+
+    @if (submitted) {
+      <mat-card class="success-message" appearance="outlined">
+        <mat-card-header>
+          <mat-card-title>Form Submitted Successfully!</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <pre>{{ submittedData | json }}</pre>
+        </mat-card-content>
+      </mat-card>
+    }
+  </mat-card-content>
+</mat-card>

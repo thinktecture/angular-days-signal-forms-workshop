@@ -1,0 +1,294 @@
+<!-- Exercise 05: Conditional Validation Template -->
+<!-- TODO: Replace Reactive Forms bindings with Signal Forms [formField] directive -->
+<!-- TODO: Remove all (change) event handlers - Signal Forms handles reactivity automatically! -->
+
+<mat-card class="form-container">
+  <mat-card-header>
+    <mat-card-title>Hotel Booking</mat-card-title>
+    <mat-card-subtitle>
+      Convert this Reactive Form to Signal Forms using <code>applyWhen</code> and <code>when</code>.
+    </mat-card-subtitle>
+  </mat-card-header>
+
+  <mat-card-content>
+    <form>
+      <!-- Booking Dates -->
+      <section class="form-section">
+        <h3>Booking Details</h3>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Check-in Date</mat-label>
+            <!-- TODO: Replace with [formField]="bookingForm.checkInDate" -->
+            <input matInput type="date" />
+            <!-- TODO: Add error display
+            @if (bookingForm.checkInDate().touched() && bookingForm.checkInDate().invalid()) {
+              <mat-error>{{ bookingForm.checkInDate().errors()[0]?.message }}</mat-error>
+            }
+            -->
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Check-out Date</mat-label>
+            <!-- TODO: Replace with [formField]="bookingForm.checkOutDate" -->
+            <input matInput type="date" />
+            <!-- TODO: Add error display -->
+          </mat-form-field>
+        </div>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Room Type</mat-label>
+          <!-- TODO: Replace with [formField]="bookingForm.roomType" -->
+          <mat-select>
+            @for (room of roomTypes; track room.value) {
+              <mat-option [value]="room.value">{{ room.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </section>
+
+      <!-- Guests (Array) -->
+      <section class="form-section">
+        <h3>Guests</h3>
+
+        <!-- TODO: Update to iterate over formModel().guests -->
+        <!-- @for (guest of formModel().guests; track $index; let i = $index) { -->
+        <mat-card class="guest-card" appearance="outlined">
+          <mat-card-content>
+            <div class="guest-header">
+              <span>Guest 1</span>
+              <button
+                mat-icon-button
+                color="warn"
+                type="button"
+                (click)="removeGuest(0)"
+                disabled
+                aria-label="Remove guest"
+              >
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+
+            <div class="form-row">
+              <mat-form-field appearance="outline">
+                <mat-label>First Name</mat-label>
+                <!-- TODO: Replace with [formField]="bookingForm.guests[i].firstName" -->
+                <input matInput type="text" />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Last Name</mat-label>
+                <!-- TODO: Replace with [formField]="bookingForm.guests[i].lastName" -->
+                <input matInput type="text" />
+              </mat-form-field>
+            </div>
+
+            <div class="form-row align-center">
+              <!-- TODO: Replace with [formField]="bookingForm.guests[i].isChild" -->
+              <!-- Note: No (change) handler needed! Signal Forms is reactive -->
+              <mat-checkbox color="primary">
+                This guest is a child (under 18)
+              </mat-checkbox>
+
+              <!-- TODO: Show age field conditionally
+              @if (formModel().guests[i].isChild) {
+                <mat-form-field appearance="outline" class="age-field">
+                  <mat-label>Age</mat-label>
+                  <input matInput type="number" [formField]="bookingForm.guests[i].age" min="0" max="17" />
+                  @if (bookingForm.guests[i].age().touched() && bookingForm.guests[i].age().invalid()) {
+                    <mat-error>{{ bookingForm.guests[i].age().errors()[0]?.message }}</mat-error>
+                  }
+                </mat-form-field>
+              }
+              -->
+            </div>
+          </mat-card-content>
+        </mat-card>
+        <!-- } -->
+
+        <button mat-stroked-button color="primary" type="button" (click)="addGuest()">
+          <mat-icon>add</mat-icon>
+          Add Guest
+        </button>
+      </section>
+
+      <!-- Optional Services with Conditional Validation -->
+      <section class="form-section">
+        <h3>Optional Services</h3>
+
+        <!-- Breakfast -->
+        <div class="service-option">
+          <!-- TODO: Replace with [formField]="bookingForm.includeBreakfast" -->
+          <!-- Note: No (change) handler needed! -->
+          <mat-checkbox color="primary">
+            Include Breakfast
+          </mat-checkbox>
+
+          <!-- TODO: Show conditionally when formModel().includeBreakfast is true
+          @if (formModel().includeBreakfast) {
+            <div class="conditional-field">
+              <mat-form-field appearance="outline">
+                <mat-label>Number of Guests for Breakfast</mat-label>
+                <input matInput type="number" [formField]="bookingForm.breakfastCount" min="1" />
+                @if (bookingForm.breakfastCount().touched() && bookingForm.breakfastCount().invalid()) {
+                  <mat-error>{{ bookingForm.breakfastCount().errors()[0]?.message }}</mat-error>
+                }
+              </mat-form-field>
+            </div>
+          }
+          -->
+        </div>
+
+        <!-- Parking -->
+        <div class="service-option">
+          <!-- TODO: Replace with [formField]="bookingForm.includeParking" -->
+          <mat-checkbox color="primary">
+            Include Parking
+          </mat-checkbox>
+
+          <!-- TODO: Show conditionally when parking is included -->
+        </div>
+
+        <!-- Extra Bed -->
+        <div class="service-option">
+          <!-- TODO: Replace with [formField]="bookingForm.needsExtraBed" -->
+          <mat-checkbox color="primary">
+            Need Extra Bed
+          </mat-checkbox>
+
+          <!-- TODO: Show extra bed type select conditionally -->
+        </div>
+
+        <!-- Special Requests -->
+        <div class="service-option">
+          <!-- TODO: Replace with [formField]="bookingForm.hasSpecialRequests" -->
+          <mat-checkbox color="primary">
+            I have special requests
+          </mat-checkbox>
+
+          <!-- TODO: Show textarea conditionally -->
+        </div>
+
+        <!-- Late Checkout -->
+        <div class="service-option">
+          <!-- TODO: Replace with [formField]="bookingForm.requestLateCheckout" -->
+          <mat-checkbox color="primary">
+            Request Late Checkout
+          </mat-checkbox>
+
+          <!-- TODO: Show time input conditionally -->
+        </div>
+      </section>
+
+      <!-- Contact Info -->
+      <section class="form-section">
+        <h3>Contact Information</h3>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Email</mat-label>
+          <!-- TODO: Replace with [formField]="bookingForm.contactEmail" -->
+          <input matInput type="email" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Phone</mat-label>
+          <!-- TODO: Replace with [formField]="bookingForm.contactPhone" -->
+          <input matInput type="tel" placeholder="+49 123 456789" />
+        </mat-form-field>
+      </section>
+
+      <!-- Payment with Conditional Fields -->
+      <section class="form-section">
+        <h3>Payment</h3>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Payment Method</mat-label>
+          <!-- TODO: Replace with [formField]="bookingForm.paymentMethod" -->
+          <!-- Note: No (selectionChange) handler needed! -->
+          <mat-select>
+            @for (method of paymentMethods; track method.value) {
+              <mat-option [value]="method.value">{{ method.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <!-- TODO: Show Credit Card Fields conditionally
+        @if (formModel().paymentMethod === 'credit_card') {
+          <div class="conditional-field payment-fields">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Card Number</mat-label>
+              <input matInput type="text" [formField]="bookingForm.cardNumber" placeholder="1234567890123456" maxlength="16" />
+              @if (bookingForm.cardNumber().touched() && bookingForm.cardNumber().invalid()) {
+                <mat-error>{{ bookingForm.cardNumber().errors()[0]?.message }}</mat-error>
+              }
+            </mat-form-field>
+
+            <div class="form-row">
+              <mat-form-field appearance="outline">
+                <mat-label>Expiry Date</mat-label>
+                <input matInput type="text" [formField]="bookingForm.cardExpiry" placeholder="MM/YY" maxlength="5" />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>CVV</mat-label>
+                <input matInput type="text" [formField]="bookingForm.cardCvv" placeholder="123" maxlength="4" />
+              </mat-form-field>
+            </div>
+          </div>
+        }
+        -->
+
+        <!-- TODO: Show Invoice Fields conditionally
+        @if (formModel().paymentMethod === 'invoice') {
+          <div class="conditional-field payment-fields">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Company Name</mat-label>
+              <input matInput type="text" [formField]="bookingForm.companyName" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>VAT Number</mat-label>
+              <input matInput type="text" [formField]="bookingForm.vatNumber" placeholder="DE123456789" />
+            </mat-form-field>
+          </div>
+        }
+        -->
+      </section>
+
+      <!-- Form Actions -->
+      <div class="form-actions">
+        <!-- TODO: Add [disabled]="!isFormValid()" -->
+        <button mat-flat-button color="primary" type="button" (click)="onSubmit()">
+          Book Now
+        </button>
+        <button mat-stroked-button type="button" (click)="onReset()">Reset</button>
+      </div>
+
+      <!-- Debug Info -->
+      <mat-card class="debug-info" appearance="outlined">
+        <mat-card-header>
+          <mat-card-title>Form State (Debug)</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <!-- TODO: Update to use bookingForm().valid() and bookingForm().dirty() -->
+          <p><strong>Valid:</strong> TODO</p>
+          <p><strong>Dirty:</strong> TODO</p>
+          <h4>Form Value</h4>
+          <!-- TODO: Display formModel() | json -->
+          <pre>TODO: Display form model</pre>
+        </mat-card-content>
+      </mat-card>
+    </form>
+  </mat-card-content>
+</mat-card>
+
+@if (submitted()) {
+  <mat-card class="success-message">
+    <mat-card-header>
+      <mat-card-title>Booking Confirmed!</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <pre>{{ submittedData() | json }}</pre>
+    </mat-card-content>
+  </mat-card>
+}

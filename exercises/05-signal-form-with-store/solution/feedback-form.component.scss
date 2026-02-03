@@ -1,0 +1,77 @@
+:host {
+  display: block;
+  padding: 24px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.feedback-card {
+  margin-bottom: 24px;
+}
+
+.feedback-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.store-state {
+  margin-top: 24px;
+  padding: 16px;
+  background-color: rgba(0, 0, 0, 0.04);
+  border-radius: 8px;
+
+  h4 {
+    margin: 0 0 12px 0;
+    color: rgba(0, 0, 0, 0.6);
+  }
+
+  p {
+    margin: 4px 0;
+    font-size: 14px;
+  }
+
+  pre {
+    margin: 8px 0 0 0;
+    padding: 12px;
+    background-color: rgba(0, 0, 0, 0.04);
+    border-radius: 4px;
+    font-size: 12px;
+    overflow-x: auto;
+  }
+}
+
+mat-card-actions {
+  padding: 16px;
+
+  button {
+    margin-left: 8px;
+  }
+}
+
+.success-card {
+  background-color: #e8f5e9;
+
+  mat-icon[mat-card-avatar] {
+    color: #4caf50;
+  }
+
+  pre {
+    margin: 16px 0 0 0;
+    padding: 12px;
+    background-color: rgba(0, 0, 0, 0.04);
+    border-radius: 4px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 600px) {
+  :host {
+    padding: 16px;
+  }
+}

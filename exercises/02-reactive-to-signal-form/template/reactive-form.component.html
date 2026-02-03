@@ -1,0 +1,258 @@
+<!-- Exercise 02: Reactive Form → Signal Forms -->
+<!-- This is the starting point. Migrate this template to use Signal Forms. -->
+<!--
+  Key changes:
+  1. Replace [formGroup]="registrationForm" - not needed with Signal Forms
+  2. Replace formControlName="field" with [formField]="form.field"
+  3. Replace formGroupName="address" with direct access: form.address.field
+  4. Replace FormArray iteration with signal array iteration
+  5. Replace hasError() helper with form.field().invalid() && form.field().touched()
+  6. Replace getErrorMessage() with form.field().errors()[0]?.message
+  7. Replace registrationForm.valid with isFormValid() (computed signal)
+-->
+
+<mat-card class="form-container">
+  <mat-card-header>
+    <mat-card-title>Reactive Form - Registration (Exercise)</mat-card-title>
+    <mat-card-subtitle>
+      This is a classic Angular Reactive Form with nested objects, FormArray, and custom validators.
+      Your task: Convert this to the new Signal Forms API.
+    </mat-card-subtitle>
+  </mat-card-header>
+
+  <mat-card-content>
+    <!-- TODO: Remove [formGroup] - Signal Forms don't need it -->
+    <form [formGroup]="registrationForm" (ngSubmit)="onSubmit()">
+      <!-- Personal Info Section -->
+      <section class="form-section">
+        <h3>Personal Information</h3>
+
+        <div class="form-row">
+          <!-- TODO: Replace formControlName with [formField] -->
+          <!-- BEFORE: formControlName="firstName" -->
+          <!-- AFTER:  [formField]="registrationForm.firstName" -->
+          <mat-form-field appearance="outline">
+            <mat-label>First Name</mat-label>
+            <input matInput type="text" formControlName="firstName" />
+            @if (hasError('firstName')) {
+              <mat-error>{{ getErrorMessage('firstName') }}</mat-error>
+            }
+            <!-- AFTER:
+            @if (registrationForm.firstName().invalid() && registrationForm.firstName().touched()) {
+              @for (error of registrationForm.firstName().errors(); track error.message) {
+                <mat-error>{{ error.message }}</mat-error>
+              }
+            }
+            -->
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Last Name</mat-label>
+            <input matInput type="text" formControlName="lastName" />
+            @if (hasError('lastName')) {
+              <mat-error>{{ getErrorMessage('lastName') }}</mat-error>
+            }
+          </mat-form-field>
+        </div>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Email</mat-label>
+          <input matInput type="email" formControlName="email" />
+          @if (hasError('email')) {
+            <mat-error>{{ getErrorMessage('email') }}</mat-error>
+          }
+        </mat-form-field>
+      </section>
+
+      <!-- Password Section -->
+      <section class="form-section">
+        <h3>Password</h3>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Password</mat-label>
+          <input matInput type="password" formControlName="password" />
+          @if (hasError('password')) {
+            <mat-error>{{ getErrorMessage('password') }}</mat-error>
+          }
+          <!-- TODO: Add password strength feedback using computed signal -->
+          <!-- @if (formModel().password && !passwordStrength().valid) {
+            <mat-hint class="password-hint">
+              Password must contain: {{ passwordStrength().errors.join(', ') }}
+            </mat-hint>
+          } -->
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Confirm Password</mat-label>
+          <input matInput type="password" formControlName="confirmPassword" />
+          @if (hasError('confirmPassword')) {
+            <mat-error>{{ getErrorMessage('confirmPassword') }}</mat-error>
+          }
+          <!-- Cross-field validation -->
+          @if (registrationForm.errors?.['passwordMismatch'] && registrationForm.get('confirmPassword')?.touched) {
+            <mat-error>Passwords do not match</mat-error>
+          }
+          <!-- TODO: Replace with computed signal
+          @if (!passwordsMatch() && registrationForm.confirmPassword().touched()) {
+            <mat-error>Passwords do not match</mat-error>
+          }
+          -->
+        </mat-form-field>
+      </section>
+
+      <!-- Address Section (Nested Object) -->
+      <!-- TODO: Remove formGroupName - access nested fields directly -->
+      <!-- BEFORE: formGroupName="address" -->
+      <!-- AFTER:  Direct access via registrationForm.address.* -->
+      <section class="form-section" formGroupName="address">
+        <h3>Address</h3>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Street</mat-label>
+          <input matInput type="text" formControlName="street" />
+          @if (hasError('address.street')) {
+            <mat-error>{{ getErrorMessage('address.street') }}</mat-error>
+          }
+        </mat-form-field>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Postal Code</mat-label>
+            <input matInput type="text" formControlName="postalCode" placeholder="12345" />
+            @if (hasError('address.postalCode')) {
+              <mat-error>{{ getErrorMessage('address.postalCode') }}</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>City</mat-label>
+            <input matInput type="text" formControlName="city" />
+            @if (hasError('address.city')) {
+              <mat-error>{{ getErrorMessage('address.city') }}</mat-error>
+            }
+          </mat-form-field>
+        </div>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Country</mat-label>
+          <mat-select formControlName="country">
+            <mat-option value="">Select a country...</mat-option>
+            @for (country of countries; track country) {
+              <mat-option [value]="country">{{ country }}</mat-option>
+            }
+          </mat-select>
+          @if (hasError('address.country')) {
+            <mat-error>{{ getErrorMessage('address.country') }}</mat-error>
+          }
+        </mat-form-field>
+      </section>
+
+      <!-- Phone Numbers Section (FormArray) -->
+      <!-- TODO: Replace FormArray iteration with signal array -->
+      <!-- BEFORE: @for (phone of phoneNumbers.controls; ...) with [formGroupName] -->
+      <!-- AFTER:  @for (phone of formModel().phoneNumbers; ...) with [formField] -->
+      <section class="form-section">
+        <h3>Phone Numbers</h3>
+
+        @for (phone of phoneNumbers.controls; track $index; let i = $index) {
+          <div class="phone-entry" [formGroupName]="'phoneNumbers'">
+            <div [formGroupName]="i" class="phone-row">
+              <mat-form-field appearance="outline" class="type-field">
+                <mat-label>Type</mat-label>
+                <mat-select formControlName="type">
+                  @for (type of phoneTypes; track type) {
+                    <mat-option [value]="type">{{ type }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="number-field">
+                <mat-label>Number</mat-label>
+                <input matInput type="tel" formControlName="number" placeholder="+49 123 456789" />
+                @if (hasError('phoneNumbers.' + i + '.number')) {
+                  <mat-error>{{ getErrorMessage('phoneNumbers.' + i + '.number') }}</mat-error>
+                }
+              </mat-form-field>
+
+              <button
+                mat-icon-button
+                color="warn"
+                type="button"
+                (click)="removePhoneNumber(i)"
+                [disabled]="phoneNumbers.length === 1"
+                aria-label="Remove phone number"
+              >
+                <mat-icon>delete</mat-icon>
+              </button>
+            </div>
+          </div>
+        }
+
+        <button mat-stroked-button color="primary" type="button" (click)="addPhoneNumber()">
+          <mat-icon>add</mat-icon>
+          Add Phone Number
+        </button>
+      </section>
+
+      <!-- Terms -->
+      <section class="form-section">
+        <mat-checkbox formControlName="acceptTerms" color="primary">
+          I accept the terms and conditions *
+        </mat-checkbox>
+        @if (hasError('acceptTerms')) {
+          <mat-error class="checkbox-error">You must accept the terms</mat-error>
+        }
+        <!-- TODO: Replace with computed signal
+        @if (!termsAccepted() && registrationForm.acceptTerms().touched()) {
+          <mat-error class="checkbox-error">You must accept the terms</mat-error>
+        }
+        -->
+      </section>
+
+      <!-- Form Actions -->
+      <!-- TODO: Update disabled condition to use computed signal -->
+      <!-- BEFORE: [disabled]="registrationForm.invalid" -->
+      <!-- AFTER:  [disabled]="!isFormValid() || registrationForm().submitting()" -->
+      <div class="form-actions">
+        <button mat-flat-button color="primary" type="submit" [disabled]="registrationForm.invalid">
+          Register
+        </button>
+        <button mat-stroked-button type="button" (click)="onReset()">
+          Reset
+        </button>
+      </div>
+
+      <!-- Debug Info -->
+      <!-- TODO: Update state access to use signals -->
+      <!-- BEFORE: registrationForm.valid, registrationForm.dirty, registrationForm.value -->
+      <!-- AFTER:  registrationForm().valid(), registrationForm().dirty(), formModel() -->
+      <mat-card class="debug-info" appearance="outlined">
+        <mat-card-header>
+          <mat-card-title>Form State (Debug)</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <p><strong>Valid:</strong> {{ registrationForm.valid }}</p>
+          <p><strong>Dirty:</strong> {{ registrationForm.dirty }}</p>
+          <p><strong>Touched:</strong> {{ registrationForm.touched }}</p>
+          <h4>Form Value</h4>
+          <pre>{{ registrationForm.value | json }}</pre>
+          @if (registrationForm.errors) {
+            <h4>Form-Level Errors</h4>
+            <pre>{{ registrationForm.errors | json }}</pre>
+          }
+        </mat-card-content>
+      </mat-card>
+    </form>
+  </mat-card-content>
+</mat-card>
+
+@if (submitted) {
+  <mat-card class="success-message">
+    <mat-card-header>
+      <mat-card-title>Registration Successful!</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <pre>{{ submittedData | json }}</pre>
+    </mat-card-content>
+  </mat-card>
+}

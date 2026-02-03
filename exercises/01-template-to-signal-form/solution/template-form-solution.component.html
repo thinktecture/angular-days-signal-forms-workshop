@@ -1,0 +1,117 @@
+<mat-card class="form-container">
+  <mat-card-header>
+    <mat-card-title>Signal Forms (Solution)</mat-card-title>
+  </mat-card-header>
+  <mat-card-content>
+    <p class="description">
+      This is the migrated version using Angular Signal Forms API. Compare with the original
+      Template-Driven Form to see the differences.
+    </p>
+
+    <form (ngSubmit)="onSubmit()">
+      <!-- Name Field -->
+      <!-- BEFORE: [(ngModel)]="formData.name" #nameInput="ngModel" required minlength="2" -->
+      <!-- AFTER:  [formField]="userForm.name" -->
+      <mat-form-field appearance="outline">
+        <mat-label>Name</mat-label>
+        <input matInput type="text" id="name" [formField]="userForm.name" />
+        @if (userForm.name().invalid() && userForm.name().touched()) {
+          @for (error of userForm.name().errors(); track error.message) {
+            <mat-error>{{ error.message }}</mat-error>
+          }
+        }
+      </mat-form-field>
+
+      <!-- Email Field -->
+      <!-- BEFORE: [(ngModel)]="formData.email" #emailInput="ngModel" required email -->
+      <!-- AFTER:  [formField]="userForm.email" -->
+      <mat-form-field appearance="outline">
+        <mat-label>Email</mat-label>
+        <input matInput type="email" id="email" [formField]="userForm.email" />
+        @if (userForm.email().invalid() && userForm.email().touched()) {
+          @for (error of userForm.email().errors(); track error.message) {
+            <mat-error>{{ error.message }}</mat-error>
+          }
+        }
+      </mat-form-field>
+
+      <!-- Age Field -->
+      <!-- BEFORE: [(ngModel)]="formData.age" #ageInput="ngModel" min="0" max="120" -->
+      <!-- AFTER:  [formField]="userForm.age" -->
+      <mat-form-field appearance="outline">
+        <mat-label>Age</mat-label>
+        <input matInput type="number" id="age" [formField]="userForm.age" />
+        @if (userForm.age().invalid() && userForm.age().touched()) {
+          @for (error of userForm.age().errors(); track error.message) {
+            <mat-error>{{ error.message }}</mat-error>
+          }
+        }
+      </mat-form-field>
+
+      <!-- Newsletter Checkbox -->
+      <!-- BEFORE: [(ngModel)]="formData.newsletter" -->
+      <!-- AFTER:  [formField]="userForm.newsletter" -->
+      <mat-checkbox [formField]="userForm.newsletter"> Subscribe to newsletter </mat-checkbox>
+
+      <!-- Form Actions -->
+      <!-- Using submit() function: automatically handles submitting state and validation -->
+      <div class="form-actions">
+        <button
+          mat-flat-button
+          color="primary"
+          type="submit"
+          [disabled]="!isFormValid() || userForm().submitting()"
+        >
+          @if (userForm().submitting()) {
+            <mat-spinner diameter="20"></mat-spinner>
+            Submitting...
+          } @else {
+            Submit
+          }
+        </button>
+        <button
+          mat-stroked-button
+          type="button"
+          (click)="onReset()"
+          [disabled]="userForm().submitting()"
+        >
+          Reset
+        </button>
+      </div>
+
+      <!-- Processing Error Display -->
+      @if (userForm().processingError(); as error) {
+        <mat-card class="error-banner" appearance="outlined">
+          <mat-card-content> <strong>Error:</strong> {{ error }} </mat-card-content>
+        </mat-card>
+      }
+
+      <!-- Debug Info -->
+      <!-- Signal Forms provides reactive state: valid, dirty, touched, submitting -->
+      <mat-card class="debug-info" appearance="outlined">
+        <mat-card-header>
+          <mat-card-title>Form State (Debug)</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <p><strong>Valid:</strong> {{ isFormValid() }}</p>
+          <p><strong>Dirty:</strong> {{ isFormDirty() }}</p>
+          <p><strong>Touched:</strong> {{ isFormTouched() }}</p>
+          <p><strong>Submitting:</strong> {{ userForm().submitting() }}</p>
+          <h4>Form Value (Signal)</h4>
+          <pre>{{ formModel() | json }}</pre>
+        </mat-card-content>
+      </mat-card>
+    </form>
+
+    @if (submitted()) {
+      <mat-card class="success-message" appearance="outlined">
+        <mat-card-header>
+          <mat-card-title>Form Submitted Successfully!</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <pre>{{ submittedData() | json }}</pre>
+        </mat-card-content>
+      </mat-card>
+    }
+  </mat-card-content>
+</mat-card>

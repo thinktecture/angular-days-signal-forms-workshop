@@ -1,0 +1,339 @@
+<mat-card class="form-container">
+  <mat-card-header>
+    <mat-card-title>Hotel Booking</mat-card-title>
+    <mat-card-subtitle>
+      This Reactive Form demonstrates conditional validation patterns.
+      Your task: Convert this to Signal Forms using <code>applyWhenValue</code> and <code>when</code>.
+    </mat-card-subtitle>
+  </mat-card-header>
+
+  <mat-card-content>
+    <form [formGroup]="bookingForm" (ngSubmit)="onSubmit()">
+      <!-- Booking Dates -->
+      <section class="form-section">
+        <h3>Booking Details</h3>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Check-in Date</mat-label>
+            <input matInput type="date" formControlName="checkInDate" />
+            @if (hasError('checkInDate')) {
+              <mat-error>{{ getErrorMessage('checkInDate') }}</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Check-out Date</mat-label>
+            <input matInput type="date" formControlName="checkOutDate" />
+            @if (hasError('checkOutDate')) {
+              <mat-error>{{ getErrorMessage('checkOutDate') }}</mat-error>
+            }
+            @if (bookingForm.errors?.['invalidDateRange']) {
+              <mat-error>Check-out must be after check-in</mat-error>
+            }
+          </mat-form-field>
+        </div>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Room Type</mat-label>
+          <mat-select formControlName="roomType">
+            @for (room of roomTypes; track room.value) {
+              <mat-option [value]="room.value">{{ room.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </section>
+
+      <!-- Guests (FormArray) -->
+      <section class="form-section">
+        <h3>Guests</h3>
+
+        @for (guest of guests.controls; track $index; let i = $index) {
+          <mat-card class="guest-card" appearance="outlined" [formGroupName]="'guests'">
+            <mat-card-content [formGroupName]="i">
+              <div class="guest-header">
+                <span>Guest {{ i + 1 }}</span>
+                <button
+                  mat-icon-button
+                  color="warn"
+                  type="button"
+                  (click)="removeGuest(i)"
+                  [disabled]="guests.length === 1"
+                  aria-label="Remove guest"
+                >
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+
+              <div class="form-row">
+                <mat-form-field appearance="outline">
+                  <mat-label>First Name</mat-label>
+                  <input matInput type="text" formControlName="firstName" />
+                  @if (hasError('guests.' + i + '.firstName')) {
+                    <mat-error>{{ getErrorMessage('guests.' + i + '.firstName') }}</mat-error>
+                  }
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Last Name</mat-label>
+                  <input matInput type="text" formControlName="lastName" />
+                  @if (hasError('guests.' + i + '.lastName')) {
+                    <mat-error>{{ getErrorMessage('guests.' + i + '.lastName') }}</mat-error>
+                  }
+                </mat-form-field>
+              </div>
+
+              <div class="form-row align-center">
+                <mat-checkbox formControlName="isChild" (change)="onGuestChildChange(i)" color="primary">
+                  This guest is a child (under 18)
+                </mat-checkbox>
+
+                <!-- Conditional: Age field only shown when isChild is true -->
+                @if (guests.at(i).get('isChild')?.value) {
+                  <mat-form-field appearance="outline" class="age-field">
+                    <mat-label>Age</mat-label>
+                    <input matInput type="number" formControlName="age" min="0" max="17" />
+                    @if (hasError('guests.' + i + '.age')) {
+                      <mat-error>{{ getErrorMessage('guests.' + i + '.age') }}</mat-error>
+                    }
+                  </mat-form-field>
+                }
+              </div>
+            </mat-card-content>
+          </mat-card>
+        }
+
+        <button mat-stroked-button color="primary" type="button" (click)="addGuest()">
+          <mat-icon>add</mat-icon>
+          Add Guest
+        </button>
+      </section>
+
+      <!-- Optional Services with Conditional Validation -->
+      <section class="form-section">
+        <h3>Optional Services</h3>
+
+        <!-- Breakfast -->
+        <div class="service-option">
+          <mat-checkbox formControlName="includeBreakfast" (change)="onBreakfastChange()" color="primary">
+            Include Breakfast
+          </mat-checkbox>
+
+          @if (bookingForm.get('includeBreakfast')?.value) {
+            <div class="conditional-field">
+              <mat-form-field appearance="outline">
+                <mat-label>Number of Guests for Breakfast</mat-label>
+                <input matInput type="number" formControlName="breakfastCount" min="1" />
+                @if (hasError('breakfastCount')) {
+                  <mat-error>{{ getErrorMessage('breakfastCount') }}</mat-error>
+                }
+              </mat-form-field>
+            </div>
+          }
+        </div>
+
+        <!-- Parking -->
+        <div class="service-option">
+          <mat-checkbox formControlName="includeParking" (change)="onParkingChange()" color="primary">
+            Include Parking
+          </mat-checkbox>
+
+          @if (bookingForm.get('includeParking')?.value) {
+            <div class="conditional-field">
+              <mat-form-field appearance="outline">
+                <mat-label>License Plate</mat-label>
+                <input matInput type="text" formControlName="licensePlate" placeholder="e.g., B-AB 1234" />
+                @if (hasError('licensePlate')) {
+                  <mat-error>{{ getErrorMessage('licensePlate') }}</mat-error>
+                }
+              </mat-form-field>
+            </div>
+          }
+        </div>
+
+        <!-- Extra Bed -->
+        <div class="service-option">
+          <mat-checkbox formControlName="needsExtraBed" (change)="onExtraBedChange()" color="primary">
+            Need Extra Bed
+          </mat-checkbox>
+
+          @if (bookingForm.get('needsExtraBed')?.value) {
+            <div class="conditional-field">
+              <mat-form-field appearance="outline">
+                <mat-label>Extra Bed Type</mat-label>
+                <mat-select formControlName="extraBedType">
+                  <mat-option [value]="null">Select...</mat-option>
+                  @for (bed of extraBedTypes; track bed.value) {
+                    <mat-option [value]="bed.value">{{ bed.label }}</mat-option>
+                  }
+                </mat-select>
+                @if (hasError('extraBedType')) {
+                  <mat-error>{{ getErrorMessage('extraBedType') }}</mat-error>
+                }
+              </mat-form-field>
+            </div>
+          }
+        </div>
+
+        <!-- Special Requests -->
+        <div class="service-option">
+          <mat-checkbox formControlName="hasSpecialRequests" (change)="onSpecialRequestsChange()" color="primary">
+            I have special requests
+          </mat-checkbox>
+
+          @if (bookingForm.get('hasSpecialRequests')?.value) {
+            <div class="conditional-field">
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Please describe your requests (min 10 chars)</mat-label>
+                <textarea matInput formControlName="specialRequestDetails" rows="3"></textarea>
+                @if (hasError('specialRequestDetails')) {
+                  <mat-error>{{ getErrorMessage('specialRequestDetails') }}</mat-error>
+                }
+              </mat-form-field>
+            </div>
+          }
+        </div>
+
+        <!-- Late Checkout -->
+        <div class="service-option">
+          <mat-checkbox formControlName="requestLateCheckout" (change)="onLateCheckoutChange()" color="primary">
+            Request Late Checkout
+          </mat-checkbox>
+
+          @if (bookingForm.get('requestLateCheckout')?.value) {
+            <div class="conditional-field">
+              <mat-form-field appearance="outline">
+                <mat-label>Desired Checkout Time (12:00 or later)</mat-label>
+                <input matInput type="time" formControlName="lateCheckoutTime" min="12:00" />
+                @if (hasError('lateCheckoutTime')) {
+                  <mat-error>{{ getErrorMessage('lateCheckoutTime') }}</mat-error>
+                }
+              </mat-form-field>
+            </div>
+          }
+        </div>
+      </section>
+
+      <!-- Contact Info -->
+      <section class="form-section">
+        <h3>Contact Information</h3>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Email</mat-label>
+          <input matInput type="email" formControlName="contactEmail" />
+          @if (hasError('contactEmail')) {
+            <mat-error>{{ getErrorMessage('contactEmail') }}</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Phone</mat-label>
+          <input matInput type="tel" formControlName="contactPhone" placeholder="+49 123 456789" />
+          @if (hasError('contactPhone')) {
+            <mat-error>{{ getErrorMessage('contactPhone') }}</mat-error>
+          }
+        </mat-form-field>
+      </section>
+
+      <!-- Payment with Conditional Fields -->
+      <section class="form-section">
+        <h3>Payment</h3>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Payment Method</mat-label>
+          <mat-select formControlName="paymentMethod" (selectionChange)="onPaymentMethodChange()">
+            @for (method of paymentMethods; track method.value) {
+              <mat-option [value]="method.value">{{ method.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <!-- Credit Card Fields (conditional) -->
+        @if (bookingForm.get('paymentMethod')?.value === 'credit_card') {
+          <div class="conditional-field payment-fields">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Card Number</mat-label>
+              <input matInput type="text" formControlName="cardNumber" placeholder="1234567890123456" maxlength="16" />
+              @if (hasError('cardNumber')) {
+                <mat-error>{{ getErrorMessage('cardNumber') }}</mat-error>
+              }
+            </mat-form-field>
+
+            <div class="form-row">
+              <mat-form-field appearance="outline">
+                <mat-label>Expiry Date</mat-label>
+                <input matInput type="text" formControlName="cardExpiry" placeholder="MM/YY" maxlength="5" />
+                @if (hasError('cardExpiry')) {
+                  <mat-error>{{ getErrorMessage('cardExpiry') }}</mat-error>
+                }
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>CVV</mat-label>
+                <input matInput type="text" formControlName="cardCvv" placeholder="123" maxlength="4" />
+                @if (hasError('cardCvv')) {
+                  <mat-error>{{ getErrorMessage('cardCvv') }}</mat-error>
+                }
+              </mat-form-field>
+            </div>
+          </div>
+        }
+
+        <!-- Invoice Fields (conditional) -->
+        @if (bookingForm.get('paymentMethod')?.value === 'invoice') {
+          <div class="conditional-field payment-fields">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Company Name</mat-label>
+              <input matInput type="text" formControlName="companyName" />
+              @if (hasError('companyName')) {
+                <mat-error>{{ getErrorMessage('companyName') }}</mat-error>
+              }
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>VAT Number</mat-label>
+              <input matInput type="text" formControlName="vatNumber" placeholder="DE123456789" />
+              @if (hasError('vatNumber')) {
+                <mat-error>{{ getErrorMessage('vatNumber') }}</mat-error>
+              }
+            </mat-form-field>
+          </div>
+        }
+      </section>
+
+      <!-- Form Actions -->
+      <div class="form-actions">
+        <button mat-flat-button color="primary" type="submit">Book Now</button>
+        <button mat-stroked-button type="button" (click)="onReset()">Reset</button>
+      </div>
+
+      <!-- Debug Info -->
+      <mat-card class="debug-info" appearance="outlined">
+        <mat-card-header>
+          <mat-card-title>Form State (Debug)</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <p><strong>Valid:</strong> {{ bookingForm.valid }}</p>
+          <p><strong>Dirty:</strong> {{ bookingForm.dirty }}</p>
+          <h4>Form Value</h4>
+          <pre>{{ bookingForm.value | json }}</pre>
+          @if (bookingForm.errors) {
+            <h4>Form-Level Errors</h4>
+            <pre>{{ bookingForm.errors | json }}</pre>
+          }
+        </mat-card-content>
+      </mat-card>
+    </form>
+  </mat-card-content>
+</mat-card>
+
+@if (submitted) {
+  <mat-card class="success-message">
+    <mat-card-header>
+      <mat-card-title>Booking Confirmed!</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <pre>{{ submittedData | json }}</pre>
+    </mat-card-content>
+  </mat-card>
+}

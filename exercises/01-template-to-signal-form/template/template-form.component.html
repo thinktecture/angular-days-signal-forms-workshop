@@ -1,0 +1,152 @@
+<!-- Exercise 01: Template-Driven Form → Signal Forms -->
+<!-- This is the starting point. Migrate this template to use Signal Forms. -->
+<!--
+  Key changes:
+  1. Replace [(ngModel)]="formData.field" with [formField]="userForm.field"
+  2. Replace #ref="ngModel" with direct form field access
+  3. Replace ref.invalid && ref.touched with form.field().invalid() && form.field().touched()
+  4. Replace ref.errors?.['key'] with form.field().errors()
+  5. Replace userForm.valid with userForm().valid()
+  6. Replace userForm.value with formModel()
+-->
+
+<mat-card class="form-container">
+  <mat-card-header>
+    <mat-card-title>Template-Driven Form (Exercise)</mat-card-title>
+  </mat-card-header>
+  <mat-card-content>
+    <p class="description">
+      This is a classic Angular Template-Driven Form. Your task: Convert this to the new Signal
+      Forms API.
+    </p>
+
+    <!-- TODO: Remove #userForm="ngForm" - Signal Forms don't need template references -->
+    <form #userForm="ngForm" (ngSubmit)="onSubmit()">
+      <!-- Name Field -->
+      <!-- TODO: Replace [(ngModel)] with [formField] -->
+      <!-- BEFORE: [(ngModel)]="formData.name" #nameInput="ngModel" required minlength="2" -->
+      <!-- AFTER:  [formField]="userForm.name" -->
+      <mat-form-field appearance="outline">
+        <mat-label>Name</mat-label>
+        <input
+          matInput
+          type="text"
+          id="name"
+          name="name"
+          [(ngModel)]="formData.name"
+          required
+          minlength="2"
+          #nameInput="ngModel"
+        />
+        <!-- TODO: Update error display -->
+        <!-- BEFORE: -->
+        @if (nameInput.invalid && nameInput.touched) {
+          @if (nameInput.errors?.['required']) {
+            <mat-error>Name is required</mat-error>
+          }
+          @if (nameInput.errors?.['minlength']) {
+            <mat-error>Name must be at least 2 characters</mat-error>
+          }
+        }
+        <!-- AFTER:
+        @if (userForm.name().invalid() && userForm.name().touched()) {
+          @for (error of userForm.name().errors(); track error.message) {
+            <mat-error>{{ error.message }}</mat-error>
+          }
+        }
+        -->
+      </mat-form-field>
+
+      <!-- Email Field -->
+      <mat-form-field appearance="outline">
+        <mat-label>Email</mat-label>
+        <input
+          matInput
+          type="email"
+          id="email"
+          name="email"
+          [(ngModel)]="formData.email"
+          required
+          email
+          #emailInput="ngModel"
+        />
+        @if (emailInput.invalid && emailInput.touched) {
+          @if (emailInput.errors?.['required']) {
+            <mat-error>Email is required</mat-error>
+          }
+          @if (emailInput.errors?.['email']) {
+            <mat-error>Please enter a valid email address</mat-error>
+          }
+        }
+      </mat-form-field>
+
+      <!-- Age Field -->
+      <mat-form-field appearance="outline">
+        <mat-label>Age</mat-label>
+        <input
+          matInput
+          type="number"
+          id="age"
+          name="age"
+          [(ngModel)]="formData.age"
+          min="0"
+          max="120"
+          #ageInput="ngModel"
+        />
+        @if (ageInput.invalid && ageInput.touched) {
+          @if (ageInput.errors?.['min']) {
+            <mat-error>Age cannot be negative</mat-error>
+          }
+          @if (ageInput.errors?.['max']) {
+            <mat-error>Please enter a valid age</mat-error>
+          }
+        }
+      </mat-form-field>
+
+      <!-- Newsletter Checkbox -->
+      <!-- TODO: Replace [(ngModel)] with [formField] -->
+      <mat-checkbox name="newsletter" [(ngModel)]="formData.newsletter">
+        Subscribe to newsletter
+      </mat-checkbox>
+
+      <!-- Form Actions -->
+      <!-- TODO: Update disabled condition -->
+      <!-- BEFORE: [disabled]="userForm.invalid" -->
+      <!-- AFTER:  [disabled]="!isFormValid() || userForm().submitting()" -->
+      <div class="form-actions">
+        <button mat-flat-button color="primary" type="submit" [disabled]="userForm.invalid">
+          Submit
+        </button>
+        <button mat-stroked-button type="button" (click)="onReset(userForm)">Reset</button>
+      </div>
+
+      <!-- Debug Info -->
+      <!-- TODO: Update state access -->
+      <!-- BEFORE: userForm.valid, userForm.dirty, userForm.value -->
+      <!-- AFTER:  userForm().valid(), userForm().dirty(), formModel() -->
+      <mat-card class="debug-info" appearance="outlined">
+        <mat-card-header>
+          <mat-card-title>Form State (Debug)</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <p><strong>Valid:</strong> {{ userForm.valid }}</p>
+          <p><strong>Dirty:</strong> {{ userForm.dirty }}</p>
+          <p><strong>Touched:</strong> {{ userForm.touched }}</p>
+          <h4>Form Value</h4>
+          <pre>{{ userForm.value | json }}</pre>
+        </mat-card-content>
+      </mat-card>
+    </form>
+
+    @if (submitted) {
+      <mat-card class="success-message" appearance="outlined">
+        <mat-card-header>
+          <mat-card-title>Form Submitted Successfully!</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <pre>{{ submittedData | json }}</pre>
+        </mat-card-content>
+      </mat-card>
+    }
+  </mat-card-content>
+</mat-card>

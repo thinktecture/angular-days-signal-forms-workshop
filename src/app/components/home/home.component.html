@@ -1,0 +1,26 @@
+<div class="home-container">
+  <header class="header">
+    <h1>Signal Forms Workshop</h1>
+    <p>Learn Angular Signal Forms through hands-on exercises</p>
+  </header>
+
+  <div class="cards-grid">
+    @for (exercise of exercises; track exercise.route) {
+      <mat-card class="exercise-card" appearance="outlined">
+        <mat-card-header>
+          <mat-icon mat-card-avatar class="card-icon">{{ exercise.icon }}</mat-icon>
+          <mat-card-title>{{ exercise.title }}</mat-card-title>
+          <mat-card-subtitle>Exercise {{ exercise.exerciseNumber }}</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <p>{{ exercise.description }}</p>
+        </mat-card-content>
+        <mat-card-actions align="end">
+          <a mat-flat-button color="primary" [routerLink]="exercise.route">
+            Start Exercise
+          </a>
+        </mat-card-actions>
+      </mat-card>
+    }
+  </div>
+</div>

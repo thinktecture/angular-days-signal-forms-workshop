@@ -1,0 +1,83 @@
+<mat-card class="profile-card">
+  <mat-card-header>
+    <mat-icon mat-card-avatar>person</mat-icon>
+    <mat-card-title>Contact Profile</mat-card-title>
+    <mat-card-subtitle>Signal Forms + NgRx SignalStore</mat-card-subtitle>
+  </mat-card-header>
+
+  <mat-card-content>
+    <form class="profile-form">
+      <!-- TODO: Replace the inputs with Signal Form bindings -->
+      <!-- Example: <input matInput [formField]="profileForm.firstName" /> -->
+
+      <div class="form-row">
+        <mat-form-field appearance="outline">
+          <mat-label>First Name</mat-label>
+          <input matInput placeholder="Enter first name" />
+          <!-- TODO: Add error display -->
+          <!-- @if (profileForm.firstName().touched() && profileForm.firstName().invalid()) {
+            <mat-error>{{ profileForm.firstName().errors()[0]?.message }}</mat-error>
+          } -->
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Last Name</mat-label>
+          <input matInput placeholder="Enter last name" />
+        </mat-form-field>
+      </div>
+
+      <div class="form-row">
+        <mat-form-field appearance="outline">
+          <mat-label>Email</mat-label>
+          <input matInput type="email" placeholder="Enter email" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Phone</mat-label>
+          <input matInput type="tel" placeholder="Enter phone" />
+        </mat-form-field>
+      </div>
+
+      <div class="form-row">
+        <mat-form-field appearance="outline">
+          <mat-label>Company</mat-label>
+          <input matInput placeholder="Enter company" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Role</mat-label>
+          <input matInput placeholder="Enter role" />
+        </mat-form-field>
+      </div>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Bio</mat-label>
+        <textarea matInput rows="3" placeholder="Enter bio"></textarea>
+        <!-- TODO: Show character count -->
+        <!-- <mat-hint>{{ profileForm.bio().value().length }} / 500</mat-hint> -->
+      </mat-form-field>
+    </form>
+
+    <!-- Store State Display -->
+    <div class="store-state">
+      <h4>Store State</h4>
+      <!-- TODO: Display store computed values -->
+      <!-- <p><strong>Full Name:</strong> {{ store.fullName() }}</p> -->
+      <!-- <p><strong>Unsaved Changes:</strong> {{ store.hasUnsavedChanges() ? 'Yes' : 'No' }}</p> -->
+      <!-- @if (store.lastSaved()) {
+        <p><strong>Last Saved:</strong> {{ store.lastSaved() | date: 'medium' }}</p>
+      } -->
+    </div>
+  </mat-card-content>
+
+  <mat-card-actions align="end">
+    <button mat-button color="warn" (click)="resetForm()">
+      <mat-icon>undo</mat-icon>
+      Reset
+    </button>
+    <button mat-raised-button color="primary" (click)="saveProfile()">
+      <mat-icon>save</mat-icon>
+      Save Profile
+    </button>
+  </mat-card-actions>
+</mat-card>

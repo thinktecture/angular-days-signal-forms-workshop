@@ -1,0 +1,67 @@
+:host {
+  display: block;
+  padding: 24px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.profile-card {
+  margin-bottom: 24px;
+}
+
+.profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.form-row {
+  display: flex;
+  gap: 16px;
+
+  mat-form-field {
+    flex: 1;
+  }
+}
+
+.full-width {
+  width: 100%;
+}
+
+.store-state {
+  margin-top: 24px;
+  padding: 16px;
+  background-color: rgba(0, 0, 0, 0.04);
+  border-radius: 8px;
+
+  h4 {
+    margin: 0 0 12px 0;
+    color: rgba(0, 0, 0, 0.6);
+  }
+
+  p {
+    margin: 4px 0;
+    font-size: 14px;
+  }
+}
+
+mat-card-actions {
+  padding: 16px;
+
+  button {
+    margin-left: 8px;
+  }
+}
+
+mat-spinner {
+  display: inline-block;
+  margin-right: 8px;
+}
+
+@media (max-width: 600px) {
+  .form-row {
+    flex-direction: column;
+    gap: 0;
+  }
+}

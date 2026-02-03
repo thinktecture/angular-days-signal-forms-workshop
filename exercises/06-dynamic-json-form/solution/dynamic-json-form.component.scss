@@ -1,0 +1,79 @@
+:host {
+  display: block;
+  padding: 24px;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.form-card {
+  margin-bottom: 24px;
+}
+
+.dynamic-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.checkbox-field {
+  padding: 8px 0 16px 0;
+}
+
+.form-actions {
+  display: flex;
+  gap: 16px;
+  margin-top: 16px;
+
+  button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+}
+
+.form-state {
+  margin-top: 24px;
+  padding: 16px;
+  background-color: rgba(0, 0, 0, 0.04);
+  border-radius: 8px;
+
+  h4 {
+    margin: 0 0 12px 0;
+    color: rgba(0, 0, 0, 0.6);
+  }
+
+  p {
+    margin: 4px 0;
+    font-size: 14px;
+  }
+
+  pre {
+    margin: 8px 0 0 0;
+    padding: 12px;
+    background-color: rgba(0, 0, 0, 0.04);
+    border-radius: 4px;
+    font-size: 12px;
+    overflow-x: auto;
+  }
+}
+
+.success-card {
+  background-color: #e8f5e9;
+
+  mat-icon[mat-card-avatar] {
+    color: #4caf50;
+  }
+
+  pre {
+    margin: 16px 0 0 0;
+    padding: 12px;
+    background-color: rgba(0, 0, 0, 0.04);
+    border-radius: 4px;
+    font-size: 12px;
+  }
+}

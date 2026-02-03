@@ -1,0 +1,110 @@
+<mat-card class="feedback-card">
+  <mat-card-header>
+    <mat-icon mat-card-avatar>feedback</mat-icon>
+    <mat-card-title>Feedback Form</mat-card-title>
+    <mat-card-subtitle>Signal Forms + NgRx SignalStore</mat-card-subtitle>
+  </mat-card-header>
+
+  <mat-card-content>
+    <form class="feedback-form">
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Name</mat-label>
+        <input matInput [formField]="feedbackForm.name" placeholder="Your name" />
+        <mat-icon matSuffix>person</mat-icon>
+        @if (feedbackForm.name().touched() && feedbackForm.name().invalid()) {
+          <mat-error>{{ feedbackForm.name().errors()[0]?.message }}</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Email</mat-label>
+        <input matInput type="email" [formField]="feedbackForm.email" placeholder="your.email@example.com" />
+        <mat-icon matSuffix>email</mat-icon>
+        @if (feedbackForm.email().touched() && feedbackForm.email().invalid()) {
+          <mat-error>{{ feedbackForm.email().errors()[0]?.message }}</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Rating</mat-label>
+        <mat-select [formField]="feedbackForm.rating">
+          <mat-option [value]="null">Select a rating...</mat-option>
+          @for (option of ratingOptions; track option.value) {
+            <mat-option [value]="option.value">{{ option.label }}</mat-option>
+          }
+        </mat-select>
+        <mat-icon matSuffix>star</mat-icon>
+        @if (feedbackForm.rating().touched() && feedbackForm.rating().invalid()) {
+          <mat-error>{{ feedbackForm.rating().errors()[0]?.message }}</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Comment (optional)</mat-label>
+        <textarea
+          matInput
+          [formField]="feedbackForm.comment"
+          rows="4"
+          placeholder="Share your thoughts..."
+        ></textarea>
+        <mat-icon matSuffix>comment</mat-icon>
+        <mat-hint align="end">{{ feedbackForm.comment().value().length }} / 500</mat-hint>
+        @if (feedbackForm.comment().touched() && feedbackForm.comment().invalid()) {
+          <mat-error>{{ feedbackForm.comment().errors()[0]?.message }}</mat-error>
+        }
+      </mat-form-field>
+    </form>
+
+    <!-- Store State Display -->
+    <div class="store-state">
+      <h4>Store State</h4>
+      <p><strong>Has Changes:</strong> {{ store.hasChanges() ? 'Yes' : 'No' }}</p>
+      <p><strong>Rating:</strong> {{ store.ratingLabel() }}</p>
+      <p><strong>Form Valid:</strong> {{ feedbackForm().valid() ? 'Yes' : 'No' }}</p>
+      @if (store.submittedAt()) {
+        <p><strong>Submitted:</strong> {{ store.submittedAt() }}</p>
+      }
+      <pre>{{ feedbackModel() | json }}</pre>
+    </div>
+  </mat-card-content>
+
+  <mat-card-actions align="end">
+    <button
+      mat-button
+      color="warn"
+      (click)="resetForm()"
+      [disabled]="!store.hasChanges() || store.loading()"
+    >
+      <mat-icon>refresh</mat-icon>
+      Reset
+    </button>
+    <button
+      mat-raised-button
+      color="primary"
+      (click)="submitFeedback()"
+      [disabled]="feedbackForm().invalid() || store.loading() || store.submitted()"
+    >
+      <mat-icon>send</mat-icon>
+      @if (store.loading()) {
+        Submitting...
+      } @else if (store.submitted()) {
+        Submitted
+      } @else {
+        Submit Feedback
+      }
+    </button>
+  </mat-card-actions>
+</mat-card>
+
+@if (store.submitted()) {
+  <mat-card class="success-card">
+    <mat-card-header>
+      <mat-icon mat-card-avatar>check_circle</mat-icon>
+      <mat-card-title>Thank You!</mat-card-title>
+      <mat-card-subtitle>Your feedback has been submitted</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      <pre>{{ feedbackModel() | json }}</pre>
+    </mat-card-content>
+  </mat-card>
+}

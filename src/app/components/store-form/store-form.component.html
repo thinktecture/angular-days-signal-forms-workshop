@@ -1,0 +1,105 @@
+<mat-card class="profile-card">
+  <mat-card-header>
+    <mat-icon mat-card-avatar>person</mat-icon>
+    <mat-card-title>Contact Profile</mat-card-title>
+    <mat-card-subtitle>Reactive Forms + NgRx SignalStore</mat-card-subtitle>
+  </mat-card-header>
+
+  <mat-card-content>
+    <form [formGroup]="profileForm" class="profile-form">
+      <div class="form-row">
+        <mat-form-field appearance="outline">
+          <mat-label>First Name</mat-label>
+          <input matInput formControlName="firstName" />
+          @if (profileForm.get('firstName')?.hasError('required')) {
+            <mat-error>First name is required</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Last Name</mat-label>
+          <input matInput formControlName="lastName" />
+          @if (profileForm.get('lastName')?.hasError('required')) {
+            <mat-error>Last name is required</mat-error>
+          }
+        </mat-form-field>
+      </div>
+
+      <div class="form-row">
+        <mat-form-field appearance="outline">
+          <mat-label>Email</mat-label>
+          <input matInput formControlName="email" type="email" />
+          @if (profileForm.get('email')?.hasError('required')) {
+            <mat-error>Email is required</mat-error>
+          } @else if (profileForm.get('email')?.hasError('email')) {
+            <mat-error>Please enter a valid email</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Phone</mat-label>
+          <input matInput formControlName="phone" type="tel" />
+        </mat-form-field>
+      </div>
+
+      <div class="form-row">
+        <mat-form-field appearance="outline">
+          <mat-label>Company</mat-label>
+          <input matInput formControlName="company" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Role</mat-label>
+          <input matInput formControlName="role" />
+        </mat-form-field>
+      </div>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Bio</mat-label>
+        <textarea matInput formControlName="bio" rows="3"></textarea>
+        <mat-hint>{{ profileForm.get('bio')?.value?.length || 0 }} / 500</mat-hint>
+        @if (profileForm.get('bio')?.hasError('maxlength')) {
+          <mat-error>Bio cannot exceed 500 characters</mat-error>
+        }
+      </mat-form-field>
+    </form>
+
+    <!-- Store State Display -->
+    <div class="store-state">
+      <h4>Store State</h4>
+      <p><strong>Full Name:</strong> {{ store.fullName() }}</p>
+      <p><strong>Unsaved Changes:</strong> {{ store.hasUnsavedChanges() ? 'Yes' : 'No' }}</p>
+      @if (store.lastSaved()) {
+        <p><strong>Last Saved:</strong> {{ store.lastSaved() | date: 'medium' }}</p>
+      }
+    </div>
+  </mat-card-content>
+
+  <mat-card-actions align="end">
+    <button
+      mat-button
+      color="warn"
+      (click)="resetForm()"
+      [disabled]="!store.hasUnsavedChanges() || store.loading()"
+    >
+      <mat-icon>undo</mat-icon>
+      Reset
+    </button>
+    @if (store.loading()) {
+      <button mat-raised-button color="primary" disabled>
+        <mat-spinner diameter="20"></mat-spinner>
+        Saving...
+      </button>
+    } @else {
+      <button
+        mat-raised-button
+        color="primary"
+        (click)="saveProfile()"
+        [disabled]="profileForm.invalid || !store.hasUnsavedChanges()"
+      >
+        <mat-icon>save</mat-icon>
+        Save Profile
+      </button>
+    }
+  </mat-card-actions>
+</mat-card>

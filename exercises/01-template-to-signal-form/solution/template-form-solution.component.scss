@@ -1,0 +1,82 @@
+.form-container {
+  max-width: 600px;
+  margin: 2rem auto;
+}
+
+.description {
+  color: var(--mat-sys-on-surface-variant);
+  margin-bottom: 1.5rem;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+
+  mat-form-field {
+    width: 100%;
+  }
+}
+
+mat-checkbox {
+  margin: 0.5rem 0;
+}
+
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+  align-items: center;
+
+  button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+}
+
+.error-banner {
+  margin-top: 1rem;
+  border-color: var(--mat-sys-error) !important;
+  background-color: var(--mat-sys-error-container);
+
+  mat-card-content {
+    color: var(--mat-sys-on-error-container);
+  }
+}
+
+.debug-info {
+  margin-top: 2rem;
+
+  h4 {
+    margin: 1rem 0 0.5rem;
+  }
+
+  p {
+    margin: 0.25rem 0;
+  }
+
+  pre {
+    background-color: var(--mat-sys-surface-variant);
+    padding: 0.75rem;
+    border-radius: 4px;
+    overflow-x: auto;
+    margin: 0.5rem 0 0 0;
+  }
+}
+
+.success-message {
+  margin-top: 2rem;
+  border-color: var(--mat-sys-primary) !important;
+
+  mat-card-title {
+    color: var(--mat-sys-primary);
+  }
+
+  pre {
+    background-color: var(--mat-sys-surface-variant);
+    padding: 0.75rem;
+    border-radius: 4px;
+    margin: 0;
+  }
+}

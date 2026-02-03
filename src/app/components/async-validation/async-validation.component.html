@@ -1,0 +1,195 @@
+<div class="form-container">
+  <h1>User Profile - Async Validation</h1>
+  <p class="description">
+    This Reactive Form demonstrates async validation with debouncing.
+    Your task: Convert this to Signal Forms using <code>asyncValidator</code> and <code>debounce</code>.
+  </p>
+
+  <div class="info-box">
+    <strong>Test Values:</strong>
+    <ul>
+      <li><strong>Taken usernames:</strong> taken, admin, user, test, demo</li>
+      <li><strong>Taken emails:</strong> test&#64;example.com, admin&#64;example.com, user&#64;example.com</li>
+      <li><strong>Valid promo codes:</strong> SAVE10, SAVE20, WELCOME, VIP50</li>
+    </ul>
+  </div>
+
+  <form [formGroup]="profileForm" (ngSubmit)="onSubmit()">
+    <!-- Username with async validation -->
+    <fieldset>
+      <legend>Account</legend>
+
+      <div class="form-field">
+        <label for="username">Username *</label>
+        <div class="input-with-status">
+          <input
+            type="text"
+            id="username"
+            formControlName="username"
+            [class.checking]="isPending('username')"
+            [class.valid-async]="usernameStatus() === 'available'"
+            [class.invalid-async]="usernameStatus() === 'taken'"
+          />
+          <span class="status-indicator">
+            @switch (usernameStatus()) {
+              @case ('checking') {
+                <span class="spinner"></span>
+                <span class="status-text checking">Checking...</span>
+              }
+              @case ('available') {
+                <span class="status-icon available">✓</span>
+                <span class="status-text available">Available</span>
+              }
+              @case ('taken') {
+                <span class="status-icon taken">✗</span>
+                <span class="status-text taken">Taken</span>
+              }
+            }
+          </span>
+        </div>
+        @if (hasError('username') && !isPending('username')) {
+          <span class="error">{{ getErrorMessage('username') }}</span>
+        }
+        <span class="hint">3+ characters, letters, numbers, and underscores only</span>
+      </div>
+
+      <div class="form-field">
+        <label for="email">Email *</label>
+        <div class="input-with-status">
+          <input
+            type="email"
+            id="email"
+            formControlName="email"
+            [class.checking]="isPending('email')"
+            [class.valid-async]="emailStatus() === 'available'"
+            [class.invalid-async]="emailStatus() === 'taken'"
+          />
+          <span class="status-indicator">
+            @switch (emailStatus()) {
+              @case ('checking') {
+                <span class="spinner"></span>
+                <span class="status-text checking">Checking...</span>
+              }
+              @case ('available') {
+                <span class="status-icon available">✓</span>
+                <span class="status-text available">Available</span>
+              }
+              @case ('taken') {
+                <span class="status-icon taken">✗</span>
+                <span class="status-text taken">Already registered</span>
+              }
+            }
+          </span>
+        </div>
+        @if (hasError('email') && !isPending('email')) {
+          <span class="error">{{ getErrorMessage('email') }}</span>
+        }
+      </div>
+    </fieldset>
+
+    <!-- Profile Info -->
+    <fieldset>
+      <legend>Profile</legend>
+
+      <div class="form-field">
+        <label for="displayName">Display Name *</label>
+        <input type="text" id="displayName" formControlName="displayName" />
+        @if (hasError('displayName')) {
+          <span class="error">{{ getErrorMessage('displayName') }}</span>
+        }
+      </div>
+
+      <div class="form-field">
+        <label for="bio">Bio</label>
+        <textarea
+          id="bio"
+          formControlName="bio"
+          rows="4"
+          placeholder="Tell us about yourself..."
+        ></textarea>
+        <div class="char-count" [class.warning]="bioCharCount() > 450" [class.error]="bioCharCount() > 500">
+          {{ bioCharCount() }} / 500 characters
+          <span class="word-count">({{ bioWordCount() }} words)</span>
+        </div>
+        @if (hasError('bio')) {
+          <span class="error">{{ getErrorMessage('bio') }}</span>
+        }
+      </div>
+    </fieldset>
+
+    <!-- Promo Code with async validation -->
+    <fieldset>
+      <legend>Promo Code (Optional)</legend>
+
+      <div class="form-field">
+        <label for="promoCode">Promo Code</label>
+        <div class="input-with-status">
+          <input
+            type="text"
+            id="promoCode"
+            formControlName="promoCode"
+            placeholder="Enter code..."
+            [class.checking]="isPending('promoCode')"
+            [class.valid-async]="promoCodeStatus() === 'valid'"
+            [class.invalid-async]="promoCodeStatus() === 'invalid'"
+          />
+          <span class="status-indicator">
+            @switch (promoCodeStatus()) {
+              @case ('checking') {
+                <span class="spinner"></span>
+                <span class="status-text checking">Validating...</span>
+              }
+              @case ('valid') {
+                <span class="status-icon available">✓</span>
+                <span class="status-text available">{{ promoDiscount() }}% discount applied!</span>
+              }
+              @case ('invalid') {
+                <span class="status-icon taken">✗</span>
+                <span class="status-text taken">Invalid code</span>
+              }
+            }
+          </span>
+        </div>
+        @if (hasError('promoCode') && !isPending('promoCode')) {
+          <span class="error">{{ getErrorMessage('promoCode') }}</span>
+        }
+      </div>
+    </fieldset>
+
+    <!-- Form Actions -->
+    <div class="form-actions">
+      <button type="submit" [disabled]="profileForm.invalid || profileForm.pending">
+        @if (profileForm.pending) {
+          Validating...
+        } @else {
+          Save Profile
+        }
+      </button>
+      <button type="button" (click)="onReset()">Reset</button>
+    </div>
+
+    <!-- Debug Info -->
+    <div class="debug-info">
+      <h3>Form State (Debug)</h3>
+      <p><strong>Valid:</strong> {{ profileForm.valid }}</p>
+      <p><strong>Pending:</strong> {{ profileForm.pending }}</p>
+      <p><strong>Status:</strong> {{ profileForm.status }}</p>
+      <h3>Async Validation Status</h3>
+      <p><strong>Username:</strong> {{ usernameStatus() }}</p>
+      <p><strong>Email:</strong> {{ emailStatus() }}</p>
+      <p><strong>Promo Code:</strong> {{ promoCodeStatus() }} @if (promoDiscount()) { ({{ promoDiscount() }}% off) }</p>
+      <h3>Form Value</h3>
+      <pre>{{ profileForm.value | json }}</pre>
+    </div>
+  </form>
+
+  @if (submitted) {
+    <div class="success-message">
+      <h3>Profile Saved!</h3>
+      @if (promoDiscount()) {
+        <p class="discount-applied">🎉 {{ promoDiscount() }}% discount applied to your account!</p>
+      }
+      <pre>{{ submittedData | json }}</pre>
+    </div>
+  }
+</div>

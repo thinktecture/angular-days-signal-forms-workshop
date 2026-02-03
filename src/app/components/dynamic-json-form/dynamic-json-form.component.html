@@ -1,0 +1,142 @@
+<mat-card class="form-card">
+  <mat-card-header>
+    <mat-icon mat-card-avatar>dynamic_form</mat-icon>
+    <mat-card-title>{{ definition().title }}</mat-card-title>
+    <mat-card-subtitle>Dynamic JSON Form - Reactive Forms Approach</mat-card-subtitle>
+  </mat-card-header>
+
+  <mat-card-content>
+    <form [formGroup]="dynamicForm" (ngSubmit)="onSubmit()" class="dynamic-form">
+      @for (field of definition().fields; track field.name) {
+        <!-- Text / Email Input -->
+        @if (field.type === 'text' || field.type === 'email') {
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>{{ field.label }}</mat-label>
+            <input
+              matInput
+              [type]="field.type"
+              [formControlName]="field.name"
+              [placeholder]="field.placeholder || ''"
+            />
+            <mat-icon matSuffix>{{ getFieldIcon(field.type) }}</mat-icon>
+            @if (hasError(field.name)) {
+              <mat-error>{{ getErrorMessage(field) }}</mat-error>
+            }
+            @if (field.minLength || field.maxLength) {
+              <mat-hint align="end">
+                @if (field.minLength) { Min: {{ field.minLength }} }
+                @if (field.maxLength) { Max: {{ field.maxLength }} }
+              </mat-hint>
+            }
+          </mat-form-field>
+        }
+
+        <!-- Number Input -->
+        @if (field.type === 'number') {
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>{{ field.label }}</mat-label>
+            <input
+              matInput
+              type="number"
+              [formControlName]="field.name"
+              [placeholder]="field.placeholder || ''"
+              [attr.min]="field.min"
+              [attr.max]="field.max"
+            />
+            <mat-icon matSuffix>{{ getFieldIcon(field.type) }}</mat-icon>
+            @if (hasError(field.name)) {
+              <mat-error>{{ getErrorMessage(field) }}</mat-error>
+            }
+            @if (field.min !== undefined || field.max !== undefined) {
+              <mat-hint align="end">
+                @if (field.min !== undefined) { Min: {{ field.min }} }
+                @if (field.max !== undefined) { Max: {{ field.max }} }
+              </mat-hint>
+            }
+          </mat-form-field>
+        }
+
+        <!-- Textarea -->
+        @if (field.type === 'textarea') {
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>{{ field.label }}</mat-label>
+            <textarea
+              matInput
+              [formControlName]="field.name"
+              [placeholder]="field.placeholder || ''"
+              rows="4"
+            ></textarea>
+            <mat-icon matSuffix>{{ getFieldIcon(field.type) }}</mat-icon>
+            @if (hasError(field.name)) {
+              <mat-error>{{ getErrorMessage(field) }}</mat-error>
+            }
+            @if (field.maxLength) {
+              <mat-hint align="end">
+                {{ dynamicForm.get(field.name)?.value?.length || 0 }} / {{ field.maxLength }}
+              </mat-hint>
+            }
+          </mat-form-field>
+        }
+
+        <!-- Select -->
+        @if (field.type === 'select') {
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>{{ field.label }}</mat-label>
+            <mat-select [formControlName]="field.name">
+              <mat-option [value]="''">Select...</mat-option>
+              @for (option of field.options; track option.value) {
+                <mat-option [value]="option.value">{{ option.label }}</mat-option>
+              }
+            </mat-select>
+            <mat-icon matSuffix>{{ getFieldIcon(field.type) }}</mat-icon>
+            @if (hasError(field.name)) {
+              <mat-error>{{ getErrorMessage(field) }}</mat-error>
+            }
+          </mat-form-field>
+        }
+
+        <!-- Checkbox -->
+        @if (field.type === 'checkbox') {
+          <div class="checkbox-field">
+            <mat-checkbox [formControlName]="field.name" color="primary">
+              {{ field.label }}
+            </mat-checkbox>
+          </div>
+        }
+      }
+
+      <div class="form-actions">
+        <button mat-raised-button color="primary" type="submit" [disabled]="dynamicForm.invalid">
+          <mat-icon>send</mat-icon>
+          Submit
+        </button>
+        <button mat-stroked-button type="button" (click)="onReset()">
+          <mat-icon>refresh</mat-icon>
+          Reset
+        </button>
+      </div>
+    </form>
+
+    <!-- Debug Info -->
+    <div class="form-state">
+      <h4>Form State (Debug)</h4>
+      <p><strong>Valid:</strong> {{ dynamicForm.valid }}</p>
+      <p><strong>Dirty:</strong> {{ dynamicForm.dirty }}</p>
+      <p><strong>Fields:</strong> {{ definition().fields.length }}</p>
+      <pre>{{ dynamicForm.value | json }}</pre>
+    </div>
+  </mat-card-content>
+</mat-card>
+
+@if (submitted()) {
+  <mat-card class="success-card">
+    <mat-card-header>
+      <mat-icon mat-card-avatar>check_circle</mat-icon>
+      <mat-card-title>Form Submitted!</mat-card-title>
+      <mat-card-subtitle>Data from dynamic form</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      <pre>{{ submittedData() | json }}</pre>
+    </mat-card-content>
+  </mat-card>
+}
