@@ -1,15 +1,22 @@
-import { Component, ChangeDetectionStrategy, inject, effect, OnInit } from '@angular/core';
+// This component is used in Exercise 05: Signal Form with NgRx SignalStore
+// See: exercises/05-signal-form-with-store/README.md
+//
+// The store (contact-profile.store.ts) is complete. Your task: connect a Signal Form to it.
+// Pattern: store delivers data → linkedSignal() model → form() → submission writes back to the store
+
 import { DatePipe } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { ContactProfileStore } from './contact-profile.store';
+
+// TODO 1: Import linkedSignal from @angular/core and
+//         FormField, FormRoot, form, required, email, maxLength from @angular/forms/signals
 
 @Component({
   selector: 'app-store-form',
@@ -17,7 +24,7 @@ import { ContactProfileStore } from './contact-profile.store';
   styleUrl: './store-form.component.scss',
   imports: [
     DatePipe,
-    ReactiveFormsModule,
+    // TODO 1: Add FormField and FormRoot
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
@@ -29,63 +36,19 @@ import { ContactProfileStore } from './contact-profile.store';
   providers: [ContactProfileStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class StoreFormComponent implements OnInit {
-  private readonly fb = inject(FormBuilder);
+export class StoreFormComponent {
   private readonly snackBar = inject(MatSnackBar);
   readonly store = inject(ContactProfileStore);
 
-  readonly profileForm = this.fb.nonNullable.group({
-    firstName: ['', Validators.required],
-    lastName: ['', Validators.required],
-    email: ['', [Validators.required, Validators.email]],
-    phone: [''],
-    company: [''],
-    role: [''],
-    bio: ['', Validators.maxLength(500)],
-  });
+  // TODO 2: Create the form model with linkedSignal(() => this.store.profile())
+  //         It follows the store (e.g. after a save or a remote update) but stays writable.
 
-  constructor() {
-    // Sync form changes to store
-    this.profileForm.valueChanges.pipe(takeUntilDestroyed()).subscribe((value) => {
-      this.store.updateProfile(value);
-    });
+  // TODO 3: Create the form with validation rules:
+  //         firstName/lastName required, email required + email(), bio maxLength(500)
 
-    // React to store changes and update form
-    effect(() => {
-      const profile = this.store.profile();
-      const currentValue = this.profileForm.getRawValue();
+  // TODO 4: Add a submission action that saves the model through the store:
+  //         await this.store.saveProfile(field().value()); then field().reset() and show a snack bar
 
-      // Only update form if store value differs (avoid circular updates)
-      if (JSON.stringify(profile) !== JSON.stringify(currentValue)) {
-        this.profileForm.patchValue(profile, { emitEvent: false });
-      }
-    });
-
-    // Show success message when saved
-    effect(() => {
-      const lastSaved = this.store.lastSaved();
-      if (lastSaved) {
-        this.snackBar.open('Profile saved successfully!', 'Close', {
-          duration: 3000,
-          horizontalPosition: 'end',
-          verticalPosition: 'bottom',
-        });
-      }
-    });
-  }
-
-  ngOnInit(): void {
-    // Initialize form with store data
-    this.profileForm.patchValue(this.store.profile(), { emitEvent: false });
-  }
-
-  saveProfile(): void {
-    if (this.profileForm.valid) {
-      this.store.saveProfile();
-    }
-  }
-
-  resetForm(): void {
-    this.store.resetToSaved();
-  }
+  // TODO 5: Implement reset: this.profileForm().reset(this.store.profile())
+  resetForm(): void {}
 }

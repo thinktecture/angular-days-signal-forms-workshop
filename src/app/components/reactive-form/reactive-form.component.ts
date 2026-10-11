@@ -108,7 +108,7 @@ export class ReactiveFormComponent {
     },
     {
       validators: [passwordMatchValidator],
-    }
+    },
   );
 
   submitted = false;

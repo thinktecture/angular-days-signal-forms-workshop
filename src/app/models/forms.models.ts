@@ -1,3 +1,4 @@
+// Exercise 01: Template-Driven Form → Signal Forms
 export interface TemplateToSignalFormModel {
   name: string;
   email: string;
@@ -19,7 +20,7 @@ export interface Address {
   country: string;
 }
 
-// Registration form model with nested objects and arrays
+// Exercise 02: Registration form model with nested objects and arrays
 export interface RegistrationFormModel {
   // Personal Info
   firstName: string;
@@ -40,7 +41,7 @@ export interface RegistrationFormModel {
   acceptTerms: boolean;
 }
 
-// Exercise 03: Contact Profile for Signal Form with Store
+// Exercise 05: Contact Profile for Signal Form with Store
 export interface ContactProfile {
   firstName: string;
   lastName: string;
@@ -51,13 +52,8 @@ export interface ContactProfile {
   bio: string;
 }
 
-export interface DynamicJsonFormModel {
-  // generic map of field values
-  [key: string]: unknown;
-}
-
 // ============================================================
-// Exercise 05: Hotel Booking - Conditional Validation
+// Exercise 03: Hotel Booking - Conditional Validation
 // ============================================================
 
 // Guest information for FormArray
@@ -99,7 +95,7 @@ export interface HotelBookingModel {
   // Conditional: details only if has special requests
   specialRequestDetails: string;
 
-  // Late checkout (simulates delay scenario from your example)
+  // Late checkout
   requestLateCheckout: boolean;
   // Conditional: checkout time only if late checkout, min 12:00
   lateCheckoutTime: string;
@@ -120,7 +116,7 @@ export interface HotelBookingModel {
 }
 
 // ============================================================
-// Exercise 06: Async Validation + Debouncing
+// Exercise 04: Async Validation + Debouncing
 // ============================================================
 
 // User profile with async validation

@@ -1,18 +1,20 @@
 <mat-card class="profile-card">
   <mat-card-header>
     <mat-icon mat-card-avatar>person</mat-icon>
-    <mat-card-title>Contact Profile</mat-card-title>
+    <mat-card-title>Contact Profile (Solution)</mat-card-title>
     <mat-card-subtitle>Signal Forms + NgRx SignalStore</mat-card-subtitle>
   </mat-card-header>
 
   <mat-card-content>
-    <form class="profile-form">
+    <form class="profile-form" [formRoot]="profileForm">
       <div class="form-row">
         <mat-form-field appearance="outline">
           <mat-label>First Name</mat-label>
           <input matInput [formField]="profileForm.firstName" />
           @if (profileForm.firstName().touched() && profileForm.firstName().invalid()) {
-            <mat-error>{{ profileForm.firstName().errors()[0]?.message }}</mat-error>
+            @for (error of profileForm.firstName().errors(); track error.kind) {
+              <mat-error>{{ error.message }}</mat-error>
+            }
           }
         </mat-form-field>
 
@@ -20,7 +22,9 @@
           <mat-label>Last Name</mat-label>
           <input matInput [formField]="profileForm.lastName" />
           @if (profileForm.lastName().touched() && profileForm.lastName().invalid()) {
-            <mat-error>{{ profileForm.lastName().errors()[0]?.message }}</mat-error>
+            @for (error of profileForm.lastName().errors(); track error.kind) {
+              <mat-error>{{ error.message }}</mat-error>
+            }
           }
         </mat-form-field>
       </div>
@@ -30,7 +34,9 @@
           <mat-label>Email</mat-label>
           <input matInput type="email" [formField]="profileForm.email" />
           @if (profileForm.email().touched() && profileForm.email().invalid()) {
-            <mat-error>{{ profileForm.email().errors()[0]?.message }}</mat-error>
+            @for (error of profileForm.email().errors(); track error.kind) {
+              <mat-error>{{ error.message }}</mat-error>
+            }
           }
         </mat-form-field>
 
@@ -57,48 +63,57 @@
         <textarea matInput rows="3" [formField]="profileForm.bio"></textarea>
         <mat-hint>{{ profileForm.bio().value().length }} / 500</mat-hint>
         @if (profileForm.bio().touched() && profileForm.bio().invalid()) {
-          <mat-error>{{ profileForm.bio().errors()[0]?.message }}</mat-error>
+          @for (error of profileForm.bio().errors(); track error.kind) {
+            <mat-error>{{ error.message }}</mat-error>
+          }
         }
       </mat-form-field>
+
+      <!-- Actions -->
+      <div class="form-actions">
+        <button
+          mat-stroked-button
+          type="button"
+          (click)="resetForm()"
+          [disabled]="!profileForm().dirty() || profileForm().submitting()"
+        >
+          <mat-icon>undo</mat-icon>
+          Reset
+        </button>
+        <button
+          mat-flat-button
+          type="submit"
+          [disabled]="!profileForm().dirty() || profileForm().submitting()"
+        >
+          @if (profileForm().submitting()) {
+            <mat-spinner diameter="20" />
+          } @else {
+            <mat-icon>save</mat-icon>
+          }
+          {{ profileForm().submitting() ? 'Saving...' : 'Save Profile' }}
+        </button>
+      </div>
     </form>
 
-    <!-- Store State Display -->
+    <!-- Store vs. Form State -->
     <div class="store-state">
-      <h4>Store State</h4>
+      <h4>Store State (persisted)</h4>
       <p><strong>Full Name:</strong> {{ store.fullName() }}</p>
-      <p><strong>Unsaved Changes:</strong> {{ store.hasUnsavedChanges() ? 'Yes' : 'No' }}</p>
-      <p><strong>Form Valid:</strong> {{ profileForm().valid() ? 'Yes' : 'No' }}</p>
-      @if (store.lastSaved()) {
-        <p><strong>Last Saved:</strong> {{ store.lastSaved() | date: 'medium' }}</p>
+      <p><strong>Saving:</strong> {{ store.saving() ? 'Yes' : 'No' }}</p>
+      @if (store.lastSaved(); as lastSaved) {
+        <p><strong>Last Saved:</strong> {{ lastSaved | date: 'medium' }}</p>
       }
+      <h4>Form State (draft)</h4>
+      <p><strong>Unsaved Changes:</strong> {{ profileForm().dirty() ? 'Yes' : 'No' }}</p>
+      <p><strong>Valid:</strong> {{ profileForm().valid() ? 'Yes' : 'No' }}</p>
+      <button mat-button type="button" (click)="store.simulateRemoteUpdate()">
+        <mat-icon>cloud_sync</mat-icon>
+        Simulate remote update
+      </button>
+      <p class="hint">
+        A remote update replaces the draft via <code>linkedSignal</code>, even while you are
+        editing.
+      </p>
     </div>
   </mat-card-content>
-
-  <mat-card-actions align="end">
-    <button
-      mat-button
-      color="warn"
-      (click)="resetForm()"
-      [disabled]="!store.hasUnsavedChanges() || store.loading()"
-    >
-      <mat-icon>undo</mat-icon>
-      Reset
-    </button>
-    @if (store.loading()) {
-      <button mat-raised-button color="primary" disabled>
-        <mat-spinner diameter="20"></mat-spinner>
-        Saving...
-      </button>
-    } @else {
-      <button
-        mat-raised-button
-        color="primary"
-        (click)="saveProfile()"
-        [disabled]="profileForm().invalid() || !store.hasUnsavedChanges()"
-      >
-        <mat-icon>save</mat-icon>
-        Save Profile
-      </button>
-    }
-  </mat-card-actions>
 </mat-card>

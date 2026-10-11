@@ -16,9 +16,8 @@
           <p>{{ exercise.description }}</p>
         </mat-card-content>
         <mat-card-actions align="end">
-          <a mat-flat-button color="primary" [routerLink]="exercise.route">
-            Start Exercise
-          </a>
+          <a mat-button [routerLink]="exercise.solutionRoute">Solution</a>
+          <a mat-flat-button [routerLink]="exercise.route">Start Exercise</a>
         </mat-card-actions>
       </mat-card>
     }

@@ -1,26 +1,30 @@
-import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
+// This component is used in Exercise 05: Signal Form with NgRx SignalStore
+// See: exercises/05-signal-form-with-store/README.md
+//
+// The store (contact-profile.store.ts) is complete. Your task: connect a Signal Form to it.
+// Pattern: store delivers data → linkedSignal() model → form() → submission writes back to the store
+
 import { DatePipe } from '@angular/common';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { ContactProfileStore } from './contact-profile.store';
 
-// TODO: Import Signal Forms API
-// import { FormField } from '@angular/forms/signals';
-
-// TODO: Import your ContactProfileStore
-// import { ContactProfileStore } from './signal-form-store';
+// TODO 1: Import linkedSignal from @angular/core and
+//         FormField, FormRoot, form, required, email, maxLength from @angular/forms/signals
 
 @Component({
-  selector: 'app-store-form-exercise',
+  selector: 'app-store-form',
   templateUrl: './store-form.component.html',
   styleUrl: './store-form.component.scss',
   imports: [
     DatePipe,
-    // TODO: Add FormField from @angular/forms/signals
+    // TODO 1: Add FormField and FormRoot
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
@@ -29,43 +33,22 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
     MatProgressSpinnerModule,
     MatSnackBarModule,
   ],
-  // TODO: Provide your ContactProfileStore
-  // providers: [ContactProfileStore],
+  providers: [ContactProfileStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class StoreFormExerciseComponent {
+export class StoreFormComponent {
   private readonly snackBar = inject(MatSnackBar);
+  readonly store = inject(ContactProfileStore);
 
-  // TODO: Inject your ContactProfileStore
-  // readonly store = inject(ContactProfileStore);
+  // TODO 2: Create the form model with linkedSignal(() => this.store.profile())
+  //         It follows the store (e.g. after a save or a remote update) but stays writable.
 
-  // TODO: Create a Signal Form that syncs with the store
-  // Hint: Use linkedSignal to create a form model that derives from the store
-  //
-  // Example structure:
-  // profileModel = linkedSignal(() => this.store.profile());
-  //
-  // profileForm = form(this.profileModel, (schema) => {
-  //   required(schema.firstName, { message: 'First name is required' });
-  //   required(schema.lastName, { message: 'Last name is required' });
-  //   required(schema.email, { message: 'Email is required' });
-  //   email(schema.email, { message: 'Please enter a valid email' });
-  //   maxLength(schema.bio, 500, { message: 'Bio cannot exceed 500 characters' });
-  // });
+  // TODO 3: Create the form with validation rules:
+  //         firstName/lastName required, email required + email(), bio maxLength(500)
 
-  // TODO: Implement save functionality
-  saveProfile(): void {
-    // if (this.profileForm().valid()) {
-    //   this.store.saveProfile();
-    //   this.snackBar.open('Profile saved successfully!', 'Close', {
-    //     duration: 3000,
-    //   });
-    // }
-  }
+  // TODO 4: Add a submission action that saves the model through the store:
+  //         await this.store.saveProfile(field().value()); then field().reset() and show a snack bar
 
-  // TODO: Implement reset functionality
-  resetForm(): void {
-    // this.store.resetToSaved();
-    // Reset form model to match store
-  }
+  // TODO 5: Implement reset: this.profileForm().reset(this.store.profile())
+  resetForm(): void {}
 }

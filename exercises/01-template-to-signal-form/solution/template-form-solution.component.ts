@@ -1,25 +1,32 @@
 // Solution for Exercise 01: Template-Driven Form → Signal Forms
-// This component demonstrates the migration from ngModel/FormsModule to Signal Forms API
+// Demonstrates the migration from FormsModule/ngModel to the Signal Forms API (Angular 22).
 
-import { Component, ChangeDetectionStrategy, signal, computed } from '@angular/core';
 import { JsonPipe } from '@angular/common';
+import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import {
   FormField,
-  form,
-  submit,
-  required,
+  FormRoot,
   email,
-  minLength,
-  min,
+  form,
   max,
+  min,
+  minLength,
+  required,
 } from '@angular/forms/signals';
+import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { TemplateToSignalFormModel } from '../../../../src/app/models/forms.models';
+import { TemplateToSignalFormModel } from '@app/models/forms.models';
+
+const INITIAL_VALUE: TemplateToSignalFormModel = {
+  name: '',
+  email: '',
+  age: null,
+  newsletter: false,
+};
 
 @Component({
   selector: 'app-template-form-solution',
@@ -27,6 +34,7 @@ import { TemplateToSignalFormModel } from '../../../../src/app/models/forms.mode
   styleUrl: './template-form-solution.component.scss',
   imports: [
     FormField,
+    FormRoot,
     JsonPipe,
     MatFormFieldModule,
     MatInputModule,
@@ -41,81 +49,60 @@ export class TemplateFormSolutionComponent {
   // ============================================
   // BEFORE (Template-Driven Form):
   // ============================================
-  // formData: TemplateToSignalFormModel = {
-  //   name: '',
-  //   email: '',
-  //   age: null,
-  //   newsletter: false
-  // };
-  // + FormsModule, [(ngModel)], #ref="ngModel", etc.
+  // formData: TemplateToSignalFormModel = { name: '', email: '', age: null, newsletter: false };
+  // + FormsModule, [(ngModel)], #ref="ngModel", required/minlength attributes, NgForm ...
 
   // ============================================
   // AFTER (Signal Forms):
   // ============================================
 
-  // Step 1: Create a signal as the single source of truth for form data
-  formModel = signal<TemplateToSignalFormModel>({
-    name: '',
-    email: '',
-    age: null,
-    newsletter: false,
-  });
+  // Step 1: A signal holds the data. It is the single source of truth, the form does not copy it.
+  readonly formModel = signal<TemplateToSignalFormModel>(INITIAL_VALUE);
 
-  // Step 2: Create the form with validation schema
-  userForm = form(this.formModel, (schema) => {
-    // Name: required, min 2 characters
-    required(schema.name, { message: 'Name is required' });
-    minLength(schema.name, 2, { message: 'Name must be at least 2 characters' });
+  // Submission feedback (set from the submission action)
+  readonly submittedData = signal<TemplateToSignalFormModel | null>(null);
 
-    // Email: required, valid email format
-    required(schema.email, { message: 'Email is required' });
-    email(schema.email, { message: 'Please enter a valid email address' });
+  // Step 2: form() wraps the model in a FieldTree. The schema function declares the rules once.
+  readonly userForm = form(
+    this.formModel,
+    (path) => {
+      // Name: required, min 2 characters
+      required(path.name, { message: 'Name is required' });
+      minLength(path.name, 2, { message: 'Name must be at least 2 characters' });
 
-    // Age: optional, but if provided must be 0-120
-    min(schema.age, 0, { message: 'Age cannot be negative' });
-    max(schema.age, 120, { message: 'Please enter a valid age' });
+      // Email: required, valid email format
+      required(path.email, { message: 'Email is required' });
+      email(path.email, { message: 'Please enter a valid email address' });
 
-    // Newsletter: no validation needed (boolean)
-  });
+      // Age: optional, but if provided must be 0-120
+      min(path.age, 0, { message: 'Age cannot be negative' });
+      max(path.age, 120, { message: 'Please enter a valid age' });
 
-  // State for submission feedback
-  submitted = signal(false);
-  submittedData = signal<TemplateToSignalFormModel | null>(null);
-
-  // Computed: derive form validity state (reactive)
-  isFormValid = computed(() => this.userForm().valid());
-  isFormDirty = computed(() => this.userForm().dirty());
-  isFormTouched = computed(() => this.userForm().touched());
-
-  async onSubmit(): Promise<void> {
-    await submit(this.userForm, async (form) => {
-      try {
-        // Simulate async operation (e.g., API call)
-        const data = form().value();
-        console.log('Form submitted:', data);
-
-        this.submitted.set(true);
-        this.submittedData.set({ ...data });
-
-        return null; // Success: no error
-      } catch (error) {
-        return {
-          kind: 'processing_error' as const,
-          error: String(error),
-        };
-      }
-    });
-  }
+      // Newsletter: no rules needed (boolean)
+    },
+    {
+      // Step 3: Submission is part of the form definition. [formRoot] in the template wires the
+      // native submit event to it. The action only runs when the form is valid.
+      submission: {
+        action: async (field) => {
+          await this.fakeApiCall();
+          this.submittedData.set(field().value());
+          console.log('Form submitted:', field().value());
+          // No return value = success. Return ValidationErrors to show server-side errors.
+        },
+        // Validation failed: all fields are marked as touched, focus the first invalid control.
+        onInvalid: (field) => field().errorSummary()[0]?.fieldTree().focusBoundControl(),
+      },
+    },
+  );
 
   onReset(): void {
-    // Reset the model signal to initial values
-    this.formModel.set({
-      name: '',
-      email: '',
-      age: null,
-      newsletter: false,
-    });
-    this.submitted.set(false);
+    // reset() clears touched/dirty on every field and (optionally) sets a new value
+    this.userForm().reset(INITIAL_VALUE);
     this.submittedData.set(null);
+  }
+
+  private fakeApiCall(): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, 800));
   }
 }

@@ -1,54 +1,65 @@
-// Exercise 05: Conditional Validation with Signal Forms
-// This is the starting point. Your task is to convert the Reactive Form to Signal Forms
-// using applyWhen, applyEach, and the `when` option for conditional validation.
+// This component is used in Exercise 03: Conditional Validation
+// See: exercises/03-conditional-validation/README.md
 //
-// Steps:
-// 1. Import Signal Forms: form, FormField, required, email, min, max, minLength, pattern, validate, applyWhen, applyEach
-// 2. Create a signal-based model with all form fields
-// 3. Use applyWhen for conditional validators (breakfast, parking, payment fields, etc.)
-// 4. Use applyEach for guest array validation
-// 5. Use the `when` option for single conditional validators (e.g., required)
-// 6. Use validate() for cross-field date validation
-// 7. Remove all (change) event handlers - Signal Forms handles reactivity automatically!
+// The form is already a Signal Form with the basic rules. Your task: add the conditional rules.
+// Techniques you will use: hidden(), the `when` option, applyWhen(), applyEach(), validate()
 
-import {
-  Component,
-  ChangeDetectionStrategy,
-  signal,
-  computed,
-} from '@angular/core';
 import { JsonPipe } from '@angular/common';
-// TODO: Import Signal Forms API
-// import {
-//   FormField,
-//   form,
-//   required,
-//   email,
-//   min,
-//   max,
-//   minLength,
-//   pattern,
-//   validate,
-//   applyWhen,
-//   applyEach,
-// } from '@angular/forms/signals';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatCheckboxModule } from '@angular/material/checkbox';
+import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
+import {
+  FormField,
+  FormRoot,
+  email,
+  form,
+  hidden,
+  min,
+  pattern,
+  required,
+} from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { MatRadioModule } from '@angular/material/radio';
+import { MatInputModule } from '@angular/material/input';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSelectModule } from '@angular/material/select';
+import { HotelBookingModel, HotelGuest } from '@app/models/forms.models';
 
-import { HotelBookingModel, HotelGuest } from '../../../../src/app/models/forms.models';
+const EMPTY_GUEST: HotelGuest = { firstName: '', lastName: '', isChild: false, age: null };
+
+const INITIAL_VALUE: HotelBookingModel = {
+  checkInDate: '',
+  checkOutDate: '',
+  roomType: 'standard',
+  guests: [EMPTY_GUEST],
+  includeBreakfast: false,
+  breakfastCount: null,
+  includeParking: false,
+  licensePlate: '',
+  needsExtraBed: false,
+  extraBedType: null,
+  hasSpecialRequests: false,
+  specialRequestDetails: '',
+  requestLateCheckout: false,
+  lateCheckoutTime: '',
+  contactEmail: '',
+  contactPhone: '',
+  paymentMethod: 'credit_card',
+  cardNumber: '',
+  cardExpiry: '',
+  cardCvv: '',
+  companyName: '',
+  vatNumber: '',
+};
 
 @Component({
-  selector: 'app-hotel-booking-exercise',
+  selector: 'app-hotel-booking',
   templateUrl: './hotel-booking.component.html',
   styleUrl: './hotel-booking.component.scss',
   imports: [
-    // TODO: Add FormField to imports
+    FormField,
+    FormRoot,
     JsonPipe,
     MatFormFieldModule,
     MatInputModule,
@@ -57,93 +68,71 @@ import { HotelBookingModel, HotelGuest } from '../../../../src/app/models/forms.
     MatButtonModule,
     MatCardModule,
     MatIconModule,
-    MatRadioModule,
+    MatProgressSpinnerModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class HotelBookingExerciseComponent {
-  // TODO: Step 1 - Create a signal-based model (source of truth)
-  // Hint: Initialize with default values for all fields
-  //
-  // readonly formModel = signal<HotelBookingModel>({
-  //   checkInDate: '',
-  //   checkOutDate: '',
-  //   roomType: 'standard',
-  //   guests: [{ firstName: '', lastName: '', isChild: false, age: null }],
-  //   includeBreakfast: false,
-  //   breakfastCount: null,
-  //   includeParking: false,
-  //   licensePlate: '',
-  //   needsExtraBed: false,
-  //   extraBedType: null,
-  //   hasSpecialRequests: false,
-  //   specialRequestDetails: '',
-  //   requestLateCheckout: false,
-  //   lateCheckoutTime: '',
-  //   contactEmail: '',
-  //   contactPhone: '',
-  //   paymentMethod: 'credit_card',
-  //   cardNumber: '',
-  //   cardExpiry: '',
-  //   cardCvv: '',
-  //   companyName: '',
-  //   vatNumber: '',
-  // });
-
-  // TODO: Step 2 - Create the Signal Form with conditional validation schema
-  //
-  // readonly bookingForm = form(this.formModel, (schema) => {
-  //   // Basic required fields
-  //   required(schema.checkInDate, { message: 'Check-in date is required' });
-  //   required(schema.checkOutDate, { message: 'Check-out date is required' });
-  //   // ... more validators
-  //
-  //   // Cross-field validation: checkout must be after check-in
-  //   validate(schema.checkOutDate, ({ value, valueOf }) => {
-  //     const checkOut = value();
-  //     const checkIn = valueOf(schema.checkInDate);
-  //     if (checkIn && checkOut && new Date(checkOut) <= new Date(checkIn)) {
-  //       return { kind: 'dateRange', message: 'Check-out must be after check-in date' };
-  //     }
-  //     return null;
-  //   });
-  //
-  //   // Guest array validation with applyEach
-  //   applyEach(schema.guests, (guest) => {
-  //     required(guest.firstName, { message: 'First name is required' });
-  //     // ... more guest validators
-  //
-  //     // Conditional age validation using applyWhen (groups multiple validators)
-  //     applyWhen(
-  //       guest.age,
-  //       ({ valueOf }) => valueOf(guest.isChild) === true,
-  //       (agePath) => {
-  //         required(agePath, { message: 'Age is required for children' });
-  //         min(agePath, 0, { message: 'Age cannot be negative' });
-  //         max(agePath, 17, { message: 'Children must be under 18' });
-  //       }
-  //     );
-  //   });
-  //
-  //   // Conditional breakfast validation using applyWhen
-  //   applyWhen(
-  //     schema.breakfastCount,
-  //     ({ valueOf }) => valueOf(schema.includeBreakfast) === true,
-  //     (path) => {
-  //       required(path, { message: 'Number of guests for breakfast is required' });
-  //       min(path, 1, { message: 'At least 1 guest for breakfast' });
-  //     }
-  //   );
-  //
-  //   // ... more conditional validators for parking, payment, etc.
-  // });
-
-  // State
-  readonly submitted = signal(false);
+export class HotelBookingComponent {
+  readonly formModel = signal<HotelBookingModel>(INITIAL_VALUE);
   readonly submittedData = signal<HotelBookingModel | null>(null);
 
-  // TODO: Step 3 - Create computed for form validity
-  // readonly isFormValid = computed(() => this.bookingForm().valid());
+  readonly bookingForm = form(
+    this.formModel,
+    (path) => {
+      // ========================================
+      // Basic rules (done)
+      // ========================================
+      required(path.checkInDate, { message: 'Check-in date is required' });
+      required(path.checkOutDate, { message: 'Check-out date is required' });
+      required(path.roomType, { message: 'Room type is required' });
+      required(path.contactEmail, { message: 'Email is required' });
+      email(path.contactEmail, { message: 'Please enter a valid email' });
+      required(path.contactPhone, { message: 'Phone is required' });
+      pattern(path.contactPhone, /^\+?[\d\s-]{6,}$/, {
+        message: 'Please enter a valid phone number',
+      });
+
+      // ========================================
+      // Example: breakfast count only exists when breakfast is included (done)
+      // hidden() removes the field from validation; the template hides it via .hidden()
+      // ========================================
+      hidden(path.breakfastCount, { when: ({ valueOf }) => !valueOf(path.includeBreakfast) });
+      required(path.breakfastCount, { message: 'Number of guests for breakfast is required' });
+      min(path.breakfastCount, 1, { message: 'At least 1 guest for breakfast' });
+
+      // TODO 1: Cross-field rule - check-out must be after check-in
+      //         Use validate(path.checkOutDate, ({ value, valueOf }) => ...)
+
+      // TODO 2: Extra bed type / late checkout time - same pattern as breakfast (hidden + rules)
+      //         extraBedType: required when needsExtraBed
+      //         lateCheckoutTime: required + pattern /^(1[2-9]|2[0-3]):[0-5][0-9]$/ when requestLateCheckout
+
+      // TODO 3: License plate (always visible) - required + pattern only when parking is included
+      //         Use applyWhen(path.licensePlate, condition, (plate) => { ...rules })
+      //         Pattern: /^[A-Z]{1,3}[-\s]?[A-Z]{1,2}[-\s]?\d{1,4}$/i
+
+      // TODO 4: Special request details (always visible) - required + minLength(10)
+      //         only when hasSpecialRequests. Use the `when` option on each rule.
+
+      // TODO 5 (bonus): Payment - group the rules with applyWhen(path, condition, (p) => { ... })
+      //         credit_card: cardNumber /^\d{16}$/, cardExpiry /^(0[1-9]|1[0-2])\/\d{2}$/, cardCvv /^\d{3,4}$/
+      //         invoice:     companyName required, vatNumber /^[A-Z]{2}\d{9,12}$/i
+
+      // TODO 6 (bonus): Guests - applyEach(path.guests, (guest) => { ... })
+      //         firstName/lastName required + minLength(2)
+      //         age: required + min(0) + max(17), but only when isChild (applyWhen on guest.age)
+    },
+    {
+      submission: {
+        action: async (field) => {
+          await new Promise((resolve) => setTimeout(resolve, 800));
+          this.submittedData.set(field().value());
+          console.log('Booking submitted:', field().value());
+        },
+        onInvalid: (field) => field().errorSummary()[0]?.fieldTree().focusBoundControl(),
+      },
+    },
+  );
 
   // Options
   readonly roomTypes = [
@@ -163,71 +152,19 @@ export class HotelBookingExerciseComponent {
     { value: 'invoice', label: 'Invoice' },
   ];
 
-  // TODO: Step 4 - Implement addGuest method
-  // Hint: Update the formModel signal to add a new guest to the array
-  //
-  // addGuest(): void {
-  //   const currentGuests = this.formModel().guests;
-  //   this.formModel.update((model) => ({
-  //     ...model,
-  //     guests: [...currentGuests, { firstName: '', lastName: '', isChild: false, age: null }],
-  //   }));
-  // }
-
-  // TODO: Step 5 - Implement removeGuest method
-  //
-  // removeGuest(index: number): void {
-  //   const currentGuests = this.formModel().guests;
-  //   if (currentGuests.length > 1) {
-  //     this.formModel.update((model) => ({
-  //       ...model,
-  //       guests: currentGuests.filter((_, i) => i !== index),
-  //     }));
-  //   }
-  // }
-
-  // TODO: Step 6 - Implement submit handler
-  //
-  // onSubmit(): void {
-  //   if (this.bookingForm().valid()) {
-  //     this.submitted.set(true);
-  //     this.submittedData.set({ ...this.formModel() });
-  //     console.log('Booking submitted:', this.submittedData());
-  //   } else {
-  //     console.log('Form is invalid');
-  //   }
-  // }
-
-  // TODO: Step 7 - Implement reset handler
-  //
-  // onReset(): void {
-  //   this.formModel.set({
-  //     checkInDate: '',
-  //     checkOutDate: '',
-  //     roomType: 'standard',
-  //     guests: [{ firstName: '', lastName: '', isChild: false, age: null }],
-  //     includeBreakfast: false,
-  //     breakfastCount: null,
-  //     // ... reset all other fields
-  //   });
-  //   this.submitted.set(false);
-  //   this.submittedData.set(null);
-  // }
-
-  // Placeholder methods (remove after implementing)
   addGuest(): void {
-    console.log('TODO: Implement addGuest');
+    this.formModel.update((model) => ({ ...model, guests: [...model.guests, EMPTY_GUEST] }));
   }
 
   removeGuest(index: number): void {
-    console.log('TODO: Implement removeGuest', index);
-  }
-
-  onSubmit(): void {
-    console.log('TODO: Implement onSubmit');
+    this.formModel.update((model) => ({
+      ...model,
+      guests: model.guests.filter((_, i) => i !== index),
+    }));
   }
 
   onReset(): void {
-    console.log('TODO: Implement onReset');
+    this.bookingForm().reset(INITIAL_VALUE);
+    this.submittedData.set(null);
   }
 }

@@ -1,7 +1,8 @@
-import { computed } from '@angular/core';
-import { signalStore, withState, withComputed, withMethods, patchState } from '@ngrx/signals';
+// Bonus for Exercise 05: a "create" scenario. The store collects submitted feedback entries.
 
-// Feedback Form Model
+import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
+import { computed } from '@angular/core';
+
 export interface FeedbackModel {
   name: string;
   email: string;
@@ -9,94 +10,37 @@ export interface FeedbackModel {
   comment: string;
 }
 
-// Initial empty state
-export const initialFeedback: FeedbackModel = {
-  name: '',
-  email: '',
-  rating: null,
-  comment: '',
-};
+export interface FeedbackEntry extends FeedbackModel {
+  submittedAt: Date;
+}
 
 interface FeedbackState {
-  feedback: FeedbackModel;
-  loading: boolean;
-  submittedAt: Date | null;
-  submitted: boolean;
+  entries: FeedbackEntry[];
+  submitting: boolean;
 }
 
 export const FeedbackStore = signalStore(
-  withState<FeedbackState>({
-    feedback: initialFeedback,
-    loading: false,
-    submittedAt: null,
-    submitted: false,
-  }),
+  withState<FeedbackState>({ entries: [], submitting: false }),
 
-  withComputed((state) => ({
-    // Check if feedback has been modified from initial state
-    hasChanges: computed(
-      () => JSON.stringify(state.feedback()) !== JSON.stringify(initialFeedback)
-    ),
-    // Basic validation check
-    isValid: computed(() => {
-      const f = state.feedback();
-      return (
-        f.name.trim().length >= 2 &&
-        f.email.includes('@') &&
-        f.rating !== null
-      );
-    }),
-    // Get rating label
-    ratingLabel: computed(() => {
-      const rating = state.feedback().rating;
-      const labels: Record<number, string> = {
-        1: 'Poor',
-        2: 'Fair',
-        3: 'Good',
-        4: 'Very Good',
-        5: 'Excellent',
-      };
-      return rating ? labels[rating] : 'Not rated';
+  withComputed(({ entries }) => ({
+    count: computed(() => entries().length),
+    averageRating: computed(() => {
+      const ratings = entries()
+        .map((e) => e.rating)
+        .filter((r): r is number => r !== null);
+      return ratings.length ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null;
     }),
   })),
 
   withMethods((store) => ({
-    updateFeedback(feedback: Partial<FeedbackModel>) {
+    // Simulates a POST /api/feedback
+    async submitFeedback(feedback: FeedbackModel): Promise<void> {
+      patchState(store, { submitting: true });
+      await new Promise((resolve) => setTimeout(resolve, 500));
       patchState(store, (state) => ({
-        feedback: { ...state.feedback, ...feedback },
+        entries: [{ ...feedback, submittedAt: new Date() }, ...state.entries],
+        submitting: false,
       }));
     },
-
-    updateField<K extends keyof FeedbackModel>(field: K, value: FeedbackModel[K]) {
-      patchState(store, (state) => ({
-        feedback: { ...state.feedback, [field]: value },
-      }));
-    },
-
-    setFeedback(feedback: FeedbackModel) {
-      patchState(store, { feedback });
-    },
-
-    submitFeedback() {
-      patchState(store, { loading: true });
-
-      // Simulate async submit operation
-      setTimeout(() => {
-        patchState(store, {
-          loading: false,
-          submittedAt: new Date(),
-          submitted: true,
-        });
-      }, 500);
-    },
-
-    reset() {
-      patchState(store, {
-        feedback: initialFeedback,
-        loading: false,
-        submittedAt: null,
-        submitted: false,
-      });
-    },
-  }))
+  })),
 );

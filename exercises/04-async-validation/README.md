@@ -2,484 +2,209 @@
 
 ## Goals
 
-In this exercise, you will learn how to implement asynchronous validation with proper debouncing in Signal Forms.
+Server-side checks are rules like any other. Signal Forms runs them only after all synchronous rules of a field
+pass, exposes the state as `pending()` and lets you throttle the request.
 
 You will:
 
-- Create async validators that call external services
-- Implement debouncing to prevent excessive API calls
-- Handle loading states during async validation
-- Display real-time feedback for async validation status
+- Validate a field against an HTTP endpoint with `validateHttp()` and the `debounce` option
+- Validate with any `Resource` via `validateAsync()` and `rxResource()`
+- Show the pending state in the template
+- Make the submission wait for pending validators (`ignoreValidators: 'none'`)
 
 ## Prerequisites
 
-- Completion of Exercise 03 (Conditional Validation)
-- Understanding of Promises/async-await or Observables
-- Basic understanding of debouncing
+- Completion of Exercise 03
+- Basic understanding of `httpResource()` / `rxResource()`
 
 ## Setup
 
-1. Start the dev server: `npm run start`
-2. Navigate to `http://localhost:4200/async-validation`
-3. Open the component at `src/app/components/async-validation/`
+1. Navigate to `http://localhost:4200/async-validation`
+2. Open `src/app/components/async-validation/`
+3. Compare with the running solution at `http://localhost:4200/solutions/async-validation`
+
+The "backend" is faked by `mock-api.interceptor.ts` (registered in `app.config.ts`). It answers:
+
+| Request                             | Response                                | Delay |
+| ----------------------------------- | --------------------------------------- | ----- |
+| `GET /api/users/check?username=...` | `{ available: boolean }`                | 800ms |
+| `GET /api/emails/check?email=...`   | `{ available: boolean }`                | 600ms |
+| `GET /api/promo/validate?code=...`  | `{ valid: boolean; discount?: number }` | 500ms |
+
+Test values:
+
+- Taken usernames: `taken`, `admin`, `user`, `test`, `demo`
+- Registered emails: `test@example.com`, `admin@example.com`, `user@example.com`
+- Valid promo codes: `SAVE10`, `SAVE20`, `WELCOME`, `VIP50`
 
 ## The Starting Point
 
-The existing Reactive Form demonstrates async validation using:
+A Signal Form with synchronous rules and a submission. The `TODO` comments mark where the async rules go.
 
-- `AsyncValidatorFn` returning `Observable<ValidationErrors | null>`
-- RxJS `timer()` for debouncing
-- Manual status tracking with signals
-- `statusChanges` subscription for UI feedback
+<details>
+<summary>How this looked with Reactive Forms</summary>
 
-**Pain points with Reactive Forms:**
+```typescript
+function usernameAvailabilityValidator(userService: MockUserService): AsyncValidatorFn {
+  return (control) =>
+    timer(300).pipe(
+      switchMap(() => userService.checkUsernameAvailability(control.value)),
+      map((isAvailable) => (isAvailable ? null : { usernameTaken: true })),
+      catchError(() => of({ serverError: true })),
+    );
+}
 
-- Complex RxJS chains for debouncing
-- Manual subscription management
-- Separate status tracking logic
-- Boilerplate for each async validator
+// + statusChanges subscriptions to track PENDING/VALID/INVALID for the UI
+```
 
-## Async Validation Scenarios
-
-This form includes:
-
-| Field | Async Validation | Debounce |
-|-------|------------------|----------|
-| `username` | Check availability against "server" | 300ms |
-| `email` | Check if already registered | 300ms |
-| `promoCode` | Validate code and get discount | 300ms |
-| `bio` | Character/word count (computed) | Instant |
-
-**Test Values:**
-
-- Taken usernames: `taken`, `admin`, `user`, `test`, `demo`
-- Taken emails: `test@example.com`, `admin@example.com`, `user@example.com`
-- Valid promo codes: `SAVE10`, `SAVE20`, `WELCOME`, `VIP50`
+</details>
 
 ## Tasks
 
-### Task 1: Update Imports
-
-Replace Reactive Forms with Signal Forms imports.
+### Task 1: Username Availability with validateHttp()
 
 <details>
 <summary>Show Solution</summary>
 
 ```typescript
-// BEFORE
-import {
-  ReactiveFormsModule,
-  FormBuilder,
-  Validators,
-  AsyncValidatorFn,
-} from '@angular/forms';
-import { Observable, timer } from 'rxjs';
-import { map, switchMap } from 'rxjs/operators';
+import { validateHttp } from '@angular/forms/signals';
 
-// AFTER
-import {
-  FormField,
-  form,
-  required,
-  email,
-  minLength,
-  maxLength,
-  pattern,
-  asyncValidator,
-} from '@angular/forms/signals';
+validateHttp(path.username, {
+  // Throttle only the request. The sync rules above still react on every keystroke.
+  debounce: 300,
+  // Returning undefined skips the request
+  request: ({ value }) =>
+    value() ? `/api/users/check?username=${encodeURIComponent(value())}` : undefined,
+  onSuccess: (res: { available: boolean }) =>
+    res.available ? null : { kind: 'usernameTaken', message: 'This username is already taken' },
+  onError: () => ({ kind: 'serverError', message: 'Could not check username availability' }),
+});
 ```
+
+`request` can also return an `HttpResourceRequest` (`{ url, params, method, ... }`).
 
 </details>
 
-### Task 2: Create Model Signal
-
-Replace FormBuilder with a signal-based model.
+### Task 2: Email Registration Check
 
 <details>
 <summary>Show Solution</summary>
 
 ```typescript
-formModel = signal<UserProfileModel>({
-  username: '',
-  email: '',
-  promoCode: '',
-  displayName: '',
-  bio: '',
+validateHttp(path.email, {
+  debounce: 300,
+  request: ({ value }) =>
+    value() ? `/api/emails/check?email=${encodeURIComponent(value())}` : undefined,
+  onSuccess: (res: { available: boolean }) =>
+    res.available ? null : { kind: 'emailTaken', message: 'This email is already registered' },
+  onError: () => ({ kind: 'serverError', message: 'Could not check email availability' }),
 });
 ```
 
 </details>
 
-### Task 3: Implement Async Validator with Debouncing
+### Task 3 (Bonus): Promo Code with validateAsync() and rxResource()
 
-Create an async validator with built-in debouncing.
+`validateAsync()` works with any `Resource`. Here the service returns an `Observable`, so `rxResource()` fits.
 
 <details>
 <summary>Show Solution</summary>
 
 ```typescript
-profileForm = form(this.formModel, (schema) => {
-  // Sync validators
-  required(schema.username);
-  minLength(schema.username, 3);
-  pattern(schema.username, /^[a-zA-Z0-9_]+$/);
+import { rxResource } from '@angular/core/rxjs-interop';
+import { validateAsync } from '@angular/forms/signals';
 
-  // Async validator with debouncing
-  asyncValidator(
-    schema.username,
-    async (value) => {
-      // Skip if value is too short (sync validators will catch this)
-      if (!value || value.length < 3) return null;
-
-      // Call the API
-      const isAvailable = await this.checkUsernameAvailability(value);
-
-      return isAvailable
-        ? null
-        : { message: 'This username is already taken' };
-    },
-    {
-      debounce: 300, // Wait 300ms after user stops typing
-    }
-  );
-
-  // Email validation
-  required(schema.email);
-  email(schema.email);
-
-  asyncValidator(
-    schema.email,
-    async (value) => {
-      if (!value || !value.includes('@')) return null;
-
-      const isAvailable = await this.checkEmailAvailability(value);
-
-      return isAvailable
-        ? null
-        : { message: 'This email is already registered' };
-    },
-    {
-      debounce: 300,
-    }
-  );
-
-  // Promo code (optional but validated if provided)
-  asyncValidator(
-    schema.promoCode,
-    async (value) => {
-      if (!value) return null;
-
-      const result = await this.validatePromoCode(value);
-
-      if (result.valid) {
-        // Store the discount for UI display
-        this.promoDiscount.set(result.discount);
-        return null;
-      }
-
-      this.promoDiscount.set(null);
-      return { message: 'Invalid promo code' };
-    },
-    {
-      debounce: 300,
-    }
-  );
-
-  // Display name (sync only)
-  required(schema.displayName);
-  minLength(schema.displayName, 2);
-  maxLength(schema.displayName, 50);
-
-  // Bio (sync only)
-  maxLength(schema.bio, 500);
+validateAsync(path.promoCode, {
+  debounce: 300,
+  // What the resource depends on. undefined = nothing to validate.
+  params: ({ value }) => value() || undefined,
+  // Build the resource from the params signal
+  factory: (code) =>
+    rxResource({
+      params: code,
+      stream: ({ params }) => this.userService.validatePromoCode(params),
+    }),
+  onSuccess: (result) =>
+    result?.valid === false ? { kind: 'invalidPromo', message: 'Invalid promo code' } : null,
+  onError: () => ({ kind: 'serverError', message: 'Could not validate promo code' }),
 });
 ```
 
 </details>
 
-### Task 4: Create Service Methods
+### Task 4: Submission Waits for Pending Validators
 
-Implement the async service methods (simulating API calls).
+By default (`'pending'`) a submission goes through while async validators are still running.
 
 <details>
 <summary>Show Solution</summary>
 
 ```typescript
-// Simulate API call to check username availability
-private async checkUsernameAvailability(username: string): Promise<boolean> {
-  // Simulate network delay
-  await new Promise((resolve) => setTimeout(resolve, 800));
-
-  const takenUsernames = ['taken', 'admin', 'user', 'test', 'demo'];
-  return !takenUsernames.includes(username.toLowerCase());
-}
-
-// Simulate API call to check email availability
-private async checkEmailAvailability(email: string): Promise<boolean> {
-  await new Promise((resolve) => setTimeout(resolve, 600));
-
-  const registeredEmails = ['test@example.com', 'admin@example.com', 'user@example.com'];
-  return !registeredEmails.includes(email.toLowerCase());
-}
-
-// Simulate API call to validate promo code
-private async validatePromoCode(code: string): Promise<{ valid: boolean; discount?: number }> {
-  await new Promise((resolve) => setTimeout(resolve, 500));
-
-  const validCodes: Record<string, number> = {
-    SAVE10: 10,
-    SAVE20: 20,
-    WELCOME: 15,
-    VIP50: 50,
-  };
-
-  const discount = validCodes[code.toUpperCase()];
-  return discount ? { valid: true, discount } : { valid: false };
+submission: {
+  ignoreValidators: 'none', // 'pending' (default) | 'none' | 'all'
+  action: async (field) => { ... },
 }
 ```
 
 </details>
 
-### Task 5: Handle Validation Status in UI
-
-Display loading indicators and validation results.
+### Task 5: Pending State in the Template
 
 <details>
 <summary>Show Solution</summary>
 
 ```html
-<!-- Username field with status indicator -->
-<div class="form-field">
-  <label for="username">Username *</label>
-  <div class="input-with-status">
-    <input [formField]="profileForm.username" />
+<input matInput [formField]="profileForm.username" />
+<mat-hint>
+  @if (profileForm.username().pending()) {
+  <mat-spinner diameter="14" />
+  Checking availability... } @else if (profileForm.username().valid()) { ✓ Available }
+</mat-hint>
 
-    <span class="status-indicator">
-      @if (profileForm.username().validating()) {
-        <span class="spinner"></span>
-        <span>Checking...</span>
-      } @else if (profileForm.username().valid() && formModel().username) {
-        <span class="status-icon available">✓</span>
-        <span>Available</span>
-      } @else if (profileForm.username().hasError('usernameTaken')) {
-        <span class="status-icon taken">✗</span>
-        <span>Taken</span>
-      }
-    </span>
-  </div>
-
-  @if (profileForm.username().invalid() && profileForm.username().touched() && !profileForm.username().validating()) {
-    @for (error of profileForm.username().errors(); track error.message) {
-      <span class="error">{{ error.message }}</span>
-    }
-  }
-</div>
-```
-
-</details>
-
-### Task 6: Use `validating()` Signal
-
-Access the built-in validation status signals.
-
-<details>
-<summary>Show Solution</summary>
-
-```typescript
-// Signal Forms provides these signals automatically:
-profileForm.username().validating()  // true while async validator is running
-profileForm.username().valid()       // true when all validators pass
-profileForm.username().invalid()     // true when any validator fails
-profileForm.username().errors()      // array of error objects
-
-// Form-level status
-profileForm().validating()           // true if any field is validating
-profileForm().valid()                // true if all fields are valid
-profileForm().submitting()           // true during submit()
-
-// Example: Disable submit button while validating
-<button
-  type="submit"
-  [disabled]="profileForm().invalid() || profileForm().validating()"
->
-  @if (profileForm().validating()) {
-    Validating...
-  } @else {
-    Save Profile
-  }
+<button type="submit" [disabled]="profileForm().submitting()">
+  @if (profileForm().pending()) { Validating... } @else { Save Profile }
 </button>
-```
-
-</details>
-
-### Task 7: Implement Computed Values with Effects
-
-Use effects for debounced computed values (like character count).
-
-<details>
-<summary>Show Solution</summary>
-
-```typescript
-// Character and word count using computed signals
-bioCharCount = computed(() => this.formModel().bio?.length ?? 0);
-bioWordCount = computed(() => {
-  const bio = this.formModel().bio;
-  return bio ? bio.trim().split(/\s+/).filter(Boolean).length : 0;
-});
-
-// Template
-<textarea [formField]="profileForm.bio"></textarea>
-<div class="char-count" [class.warning]="bioCharCount() > 450">
-  {{ bioCharCount() }} / 500 characters
-  <span class="word-count">({{ bioWordCount() }} words)</span>
-</div>
-```
-
-</details>
-
-### Task 8: Update Submit Handler
-
-Use the `submit()` function with async validation.
-
-<details>
-<summary>Show Solution</summary>
-
-```typescript
-async onSubmit(): Promise<void> {
-  await submit(this.profileForm, async (form) => {
-    try {
-      // submit() waits for all async validators to complete
-      // before calling this callback
-
-      const data = form().value();
-      console.log('Profile saved:', data);
-
-      this.submitted.set(true);
-      this.submittedData.set({ ...data });
-
-      return null; // Success
-    } catch (error) {
-      return {
-        kind: 'processing_error' as const,
-        error: String(error),
-      };
-    }
-  });
-}
 ```
 
 </details>
 
 ## Completion Criteria
 
-- [ ] All async validators use `asyncValidator()` with `debounce` option
-- [ ] No manual RxJS `timer()` or `debounceTime()` for debouncing
-- [ ] No manual `statusChanges` subscriptions
-- [ ] Loading states show during async validation (`validating()`)
-- [ ] Submit button disabled while validating
-- [ ] Error messages display correctly after validation completes
-- [ ] Form cannot submit while async validation is pending
+- [ ] Username and email are checked on the server with `validateHttp()`
+- [ ] Requests are debounced, sync errors still appear immediately
+- [ ] `pending()` is visible per field and on the form
+- [ ] Submission does not run while validators are pending
+- [ ] (Bonus) Promo code uses `validateAsync()` + `rxResource()`
 
 <details>
 <summary>Async Validation Cheat Sheet</summary>
 
-| Reactive Forms | Signal Forms |
-|----------------|--------------|
-| `AsyncValidatorFn` | `asyncValidator()` function |
-| `timer().pipe(switchMap(...))` | `{ debounce: 300 }` option |
-| `control.statusChanges` | `field().validating()` signal |
-| `control.pending` | `field().validating()` |
-| Manual subscription cleanup | Automatic |
-| `Observable<ValidationErrors>` | `Promise<Error \| null>` |
+| Reactive Forms                     | Signal Forms                                          |
+| ---------------------------------- | ----------------------------------------------------- |
+| `AsyncValidatorFn` + HTTP call     | `validateHttp(path, { request, onSuccess, onError })` |
+| `AsyncValidatorFn` + Observable    | `validateAsync(path, { params, factory, onSuccess })` |
+| `timer(300).pipe(switchMap(...))`  | `debounce: 300` option                                |
+| `control.pending`                  | `field().pending()`                                   |
+| `statusChanges` subscription       | not needed, `pending()` / `valid()` are signals       |
+| `{ asyncValidators: [...] }` order | async rules run only after sync rules pass            |
+| manual re-check                    | `field().reloadValidation()`                          |
 
-**`asyncValidator` Signature:**
+**States while a request is running:** `pending() === true`, `valid() === false`, `invalid() === false`.
 
-```typescript
-asyncValidator(
-  schemaPath,           // The field to validate
-  validatorFn,          // async (value) => Error | null
-  options?: {
-    debounce?: number,  // Milliseconds to wait (default: 0)
-    message?: string,   // Optional error message
-  }
-);
-
-// Error return format
-{ message: 'Error message to display' }
-// or null for valid
-```
-
-**Status Signals:**
+**Debouncing the whole field** (model update, all rules) instead of only the request:
 
 ```typescript
-field().validating()   // Async validation in progress
-field().valid()        // All validators pass
-field().invalid()      // Any validator fails
-field().pending()      // Alias for validating()
-field().errors()       // Array of { message: string }
-
-form().validating()    // Any field is validating
-form().valid()         // All fields valid
+debounce(path.search, 300); // milliseconds
+debounce(path.username, 'blur'); // commit on blur
 ```
-
-</details>
-
-<details>
-<summary>Key Benefits</summary>
-
-### 1. Built-in Debouncing
-
-No need for RxJS `timer()` or `debounceTime()` - just pass `{ debounce: ms }`.
-
-### 2. Simpler Async Pattern
-
-Return a Promise instead of Observable - easier to write and understand.
-
-### 3. Automatic Status Tracking
-
-`validating()` signal updates automatically - no manual subscriptions.
-
-### 4. Clean Error Format
-
-Return `{ message: string }` or `null` - consistent with sync validators.
-
-### 5. Submit Integration
-
-`submit()` automatically waits for async validators before proceeding.
-
-</details>
-
-<details>
-<summary>Debouncing Best Practices</summary>
-
-### When to Debounce
-
-- **API calls**: Always debounce to prevent rate limiting (200-500ms)
-- **Database queries**: Debounce to reduce load (300-500ms)
-- **Expensive computations**: Debounce if > 100ms (100-200ms)
-
-### When NOT to Debounce
-
-- **Instant feedback needed**: Format validation, character count
-- **After blur events**: User has finished typing
-- **Submit validation**: Should run immediately
-
-### Recommended Debounce Times
-
-| Use Case | Debounce |
-|----------|----------|
-| Username/email availability | 300-500ms |
-| Search suggestions | 200-300ms |
-| Database lookups | 300-500ms |
-| Complex calculations | 100-200ms |
 
 </details>
 
 <details>
 <summary>Solution Files</summary>
 
-See the complete solution in:
-
-- `signal-forms-workshop/exercises/04-async-validation/solution/`
+- `exercises/04-async-validation/solution/async-validation.component.ts`
+- `exercises/04-async-validation/solution/async-validation.component.html`
+- Running: `http://localhost:4200/solutions/async-validation`
 
 </details>

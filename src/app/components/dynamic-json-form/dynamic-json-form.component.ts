@@ -1,27 +1,34 @@
-import { Component, ChangeDetectionStrategy, inject, signal, OnInit } from '@angular/core';
-import {
-  ReactiveFormsModule,
-  FormBuilder,
-  FormGroup,
-  Validators,
-  ValidatorFn,
-} from '@angular/forms';
+// This component is used in Exercise 06: Dynamic JSON Form ("Forms over Data")
+// See: exercises/06-dynamic-json-form/README.md
+//
+// The form is generated from FORM_DEFINITION (form-definition.ts): model, rules and controls.
+// Your task: extend the JSON definition and watch the form follow.
+
 import { JsonPipe } from '@angular/common';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatCheckboxModule } from '@angular/material/checkbox';
+import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
+import { Field, FormField, FormRoot, form } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { FieldDefinition, FormDefinition, FORM_DEFINITION } from './form-definition';
+import { MatInputModule } from '@angular/material/input';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSelectModule } from '@angular/material/select';
+import {
+  DynamicFormModel,
+  FORM_DEFINITION,
+  applyFieldRules,
+  createInitialModel,
+} from './form-definition';
 
 @Component({
   selector: 'app-dynamic-json-form',
   templateUrl: './dynamic-json-form.component.html',
   styleUrl: './dynamic-json-form.component.scss',
   imports: [
-    ReactiveFormsModule,
+    FormField,
+    FormRoot,
     JsonPipe,
     MatFormFieldModule,
     MatInputModule,
@@ -30,76 +37,58 @@ import { FieldDefinition, FormDefinition, FORM_DEFINITION } from './form-definit
     MatButtonModule,
     MatCardModule,
     MatIconModule,
+    MatProgressSpinnerModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class DynamicJsonFormComponent implements OnInit {
-  private readonly fb = inject(FormBuilder);
+export class DynamicJsonFormComponent {
+  // The definition drives everything below
+  readonly definition = FORM_DEFINITION;
 
-  readonly definition = signal<FormDefinition>(FORM_DEFINITION);
+  // 1. Model: generated from the definition
+  readonly formModel = signal<DynamicFormModel>(createInitialModel(this.definition));
+  readonly submittedData = signal<DynamicFormModel | null>(null);
 
-  dynamicForm!: FormGroup;
+  // 2. Rules: generated from the definition (the schema function runs once, at setup)
+  readonly dynamicForm = form(
+    this.formModel,
+    (path) => {
+      for (const field of this.definition.fields) {
+        applyFieldRules(path, field);
+      }
+    },
+    {
+      submission: {
+        action: async (field) => {
+          await new Promise((resolve) => setTimeout(resolve, 800));
+          this.submittedData.set(field().value());
+          console.log('Form submitted:', field().value());
+        },
+        onInvalid: (field) => field().errorSummary()[0]?.fieldTree().focusBoundControl(),
+      },
+    },
+  );
 
-  readonly submitted = signal(false);
-  readonly submittedData = signal<Record<string, unknown> | null>(null);
-
-  ngOnInit(): void {
-    this.buildForm();
+  // 3. Controls: the template looks up the field by name.
+  //    The FieldTree has no static keys either, so the lookup is a cast. Native inputs are
+  //    type-checked against the field's value type, so the helpers narrow it per control.
+  fieldFor(name: string): Field<unknown> {
+    return this.lookup<unknown>(name);
   }
 
-  // Build form dynamically from definition
-  private buildForm(): void {
-    const formControls: Record<string, unknown> = {};
-
-    for (const field of this.definition().fields) {
-      const validators = this.getValidators(field);
-      const initialValue = this.getInitialValue(field);
-      formControls[field.name] = [initialValue, validators];
-    }
-
-    this.dynamicForm = this.fb.group(formControls);
+  inputFieldFor(name: string): Field<string | number | null> {
+    return this.lookup<string | number | null>(name);
   }
 
-  // Get validators based on field definition
-  private getValidators(field: FieldDefinition): ValidatorFn[] {
-    const validators: ValidatorFn[] = [];
-
-    if (field.required) {
-      validators.push(Validators.required);
-    }
-    if (field.minLength) {
-      validators.push(Validators.minLength(field.minLength));
-    }
-    if (field.maxLength) {
-      validators.push(Validators.maxLength(field.maxLength));
-    }
-    if (field.min !== undefined) {
-      validators.push(Validators.min(field.min));
-    }
-    if (field.max !== undefined) {
-      validators.push(Validators.max(field.max));
-    }
-    if (field.type === 'email') {
-      validators.push(Validators.email);
-    }
-
-    return validators;
+  textareaFieldFor(name: string): Field<string> {
+    return this.lookup<string>(name);
   }
 
-  // Get initial value based on field type
-  private getInitialValue(field: FieldDefinition): unknown {
-    switch (field.type) {
-      case 'checkbox':
-        return false;
-      case 'number':
-        return null;
-      default:
-        return '';
-    }
+  private lookup<T>(name: string): Field<T> {
+    return (this.dynamicForm as unknown as Record<string, Field<T>>)[name];
   }
 
-  // Get icon for field type
-  getFieldIcon(type: string): string {
+  fieldIcon(type: string): string {
     const icons: Record<string, string> = {
       text: 'text_fields',
       email: 'email',
@@ -108,46 +97,11 @@ export class DynamicJsonFormComponent implements OnInit {
       select: 'list',
       checkbox: 'check_box',
     };
-    return icons[type] || 'input';
-  }
-
-  onSubmit(): void {
-    if (this.dynamicForm.valid) {
-      this.submitted.set(true);
-      this.submittedData.set(this.dynamicForm.value);
-      console.log('Form submitted:', this.submittedData());
-    } else {
-      this.dynamicForm.markAllAsTouched();
-    }
+    return icons[type] ?? 'input';
   }
 
   onReset(): void {
-    this.dynamicForm.reset();
-    for (const field of this.definition().fields) {
-      const initialValue = this.getInitialValue(field);
-      this.dynamicForm.get(field.name)?.setValue(initialValue);
-    }
-    this.submitted.set(false);
+    this.dynamicForm().reset(createInitialModel(this.definition));
     this.submittedData.set(null);
-  }
-
-  hasError(controlName: string): boolean {
-    const control = this.dynamicForm.get(controlName);
-    return control ? control.invalid && control.touched : false;
-  }
-
-  getErrorMessage(field: FieldDefinition): string {
-    const control = this.dynamicForm.get(field.name);
-    if (!control || !control.errors) return '';
-
-    const errors = control.errors;
-    if (errors['required']) return `${field.label} is required`;
-    if (errors['minlength']) return `Minimum ${errors['minlength'].requiredLength} characters`;
-    if (errors['maxlength']) return `Maximum ${errors['maxlength'].requiredLength} characters`;
-    if (errors['email']) return 'Please enter a valid email address';
-    if (errors['min']) return `Minimum value is ${errors['min'].min}`;
-    if (errors['max']) return `Maximum value is ${errors['max'].max}`;
-
-    return 'Invalid value';
   }
 }

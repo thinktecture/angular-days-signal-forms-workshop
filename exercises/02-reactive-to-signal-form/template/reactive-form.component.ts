@@ -1,14 +1,5 @@
-// Exercise 02: Reactive Form → Signal Forms
-// This is the starting point. Your task is to migrate this component to use Signal Forms.
-//
-// Steps:
-// 1. Replace ReactiveFormsModule with FormField from @angular/forms/signals
-// 2. Convert FormBuilder-based form to a signal-based model
-// 3. Create a form with validation schema using form()
-// 4. Replace formControlName with [formField] in the template
-// 5. Replace nested formGroupName with direct access (form.address.street)
-// 6. Replace FormArray with signal array + update()
-// 7. Use computed signals for cross-field validation (password match)
+// This component is used in Exercise 02
+// Files: signal-forms-workshop/exercises/02-reactive-to-signal-form/*
 
 import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
 import {
@@ -28,13 +19,10 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
-import { RegistrationFormModel, PhoneNumber } from '../../../../src/app/models/forms.models';
+import { RegistrationFormModel, PhoneNumber } from '../../models/forms.models';
 
-// TODO: Replace imports with Signal Forms
-// import { signal, computed } from '@angular/core';
-// import { FormField, form, submit, required, email, minLength, pattern } from '@angular/forms/signals';
-
-// Custom Validator: Password strength (TO BE REPLACED with computed signal)
+// Custom Validator: Password strength
+// Requires: 1 uppercase, 1 lowercase, 1 number, 1 special char, min 8 chars
 function passwordStrengthValidator(control: AbstractControl): ValidationErrors | null {
   const value = control.value;
   if (!value) return null;
@@ -58,7 +46,7 @@ function passwordStrengthValidator(control: AbstractControl): ValidationErrors |
   return null;
 }
 
-// Cross-field Validator (TO BE REPLACED with computed signal)
+// Cross-field Validator: Password confirmation
 function passwordMatchValidator(group: AbstractControl): ValidationErrors | null {
   const password = group.get('password')?.value;
   const confirmPassword = group.get('confirmPassword')?.value;
@@ -70,11 +58,11 @@ function passwordMatchValidator(group: AbstractControl): ValidationErrors | null
 }
 
 @Component({
-  selector: 'app-reactive-form-exercise',
+  selector: 'app-reactive-form',
   templateUrl: './reactive-form.component.html',
   styleUrl: './reactive-form.component.scss',
   imports: [
-    ReactiveFormsModule, // TODO: Replace with FormField
+    ReactiveFormsModule,
     JsonPipe,
     MatFormFieldModule,
     MatInputModule,
@@ -86,89 +74,63 @@ function passwordMatchValidator(group: AbstractControl): ValidationErrors | null
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ReactiveFormExerciseComponent {
+export class ReactiveFormComponent {
+  // Exercise 02: Convert this reactive form to Signal Forms
+  // See: signal-forms-workshop/exercises/02-reactive-to-signal-form/README.md
+
   private fb = inject(FormBuilder);
 
-  // TODO: Replace FormBuilder with signal-based model
-  // BEFORE:
+  // The reactive form with nested objects and FormArray
   registrationForm: FormGroup = this.fb.group(
     {
+      // Personal Info
       firstName: ['', [Validators.required, Validators.minLength(2)]],
       lastName: ['', [Validators.required, Validators.minLength(2)]],
       email: ['', [Validators.required, Validators.email]],
+
+      // Password fields (cross-field validation applied at group level)
       password: ['', [Validators.required, passwordStrengthValidator]],
       confirmPassword: ['', [Validators.required]],
+
+      // Nested object: Address
       address: this.fb.group({
         street: ['', [Validators.required]],
         city: ['', [Validators.required]],
         postalCode: ['', [Validators.required, Validators.pattern(/^\d{5}$/)]],
         country: ['', [Validators.required]],
       }),
+
+      // FormArray: Phone numbers
       phoneNumbers: this.fb.array([this.createPhoneNumberGroup()]),
+
+      // Terms
       acceptTerms: [false, [Validators.requiredTrue]],
     },
     {
       validators: [passwordMatchValidator],
-    }
+    },
   );
-
-  // AFTER:
-  // formModel = signal<RegistrationFormModel>({
-  //   firstName: '',
-  //   lastName: '',
-  //   email: '',
-  //   password: '',
-  //   confirmPassword: '',
-  //   address: {
-  //     street: '',
-  //     city: '',
-  //     postalCode: '',
-  //     country: '',
-  //   },
-  //   phoneNumbers: [{ type: 'mobile', number: '' }],
-  //   acceptTerms: false,
-  // });
-
-  // TODO: Create form with validation schema
-  // registrationForm = form(this.formModel, (schema) => {
-  //   required(schema.firstName, { message: 'First name is required' });
-  //   minLength(schema.firstName, 2, { message: 'First name must be at least 2 characters' });
-  //   // ... more validators
-  // });
-
-  // TODO: Add computed signals for cross-field validation
-  // passwordsMatch = computed(() => {
-  //   const model = this.formModel();
-  //   if (!model.password || !model.confirmPassword) return true;
-  //   return model.password === model.confirmPassword;
-  // });
-  //
-  // passwordStrength = computed(() => {
-  //   const password = this.formModel().password;
-  //   if (!password) return { valid: true, errors: [] as string[] };
-  //   // ... validation logic
-  // });
-  //
-  // termsAccepted = computed(() => this.formModel().acceptTerms === true);
-  //
-  // isFormValid = computed(() =>
-  //   this.registrationForm().valid() && this.passwordsMatch() && this.termsAccepted()
-  // );
 
   submitted = false;
   submittedData: RegistrationFormModel | null = null;
 
+  // Getter for FormArray
   get phoneNumbers(): FormArray {
     return this.registrationForm.get('phoneNumbers') as FormArray;
   }
 
+  // Getter for nested address group
   get addressGroup(): FormGroup {
     return this.registrationForm.get('address') as FormGroup;
   }
 
+  // Available phone types
   phoneTypes: PhoneNumber['type'][] = ['home', 'work', 'mobile'];
+
+  // Available countries
   countries = ['Germany', 'Austria', 'Switzerland', 'Netherlands', 'Belgium'];
 
+  // Create a new phone number FormGroup
   private createPhoneNumberGroup(): FormGroup {
     return this.fb.group({
       type: ['mobile', [Validators.required]],
@@ -176,61 +138,32 @@ export class ReactiveFormExerciseComponent {
     });
   }
 
-  // TODO: Replace with signal.update()
-  // BEFORE:
+  // Add phone number to FormArray
   addPhoneNumber(): void {
     this.phoneNumbers.push(this.createPhoneNumberGroup());
   }
-  // AFTER:
-  // addPhoneNumber(): void {
-  //   this.formModel.update((model) => ({
-  //     ...model,
-  //     phoneNumbers: [...model.phoneNumbers, { type: 'mobile', number: '' }],
-  //   }));
-  // }
 
-  // TODO: Replace with signal.update()
-  // BEFORE:
+  // Remove phone number from FormArray
   removePhoneNumber(index: number): void {
     if (this.phoneNumbers.length > 1) {
       this.phoneNumbers.removeAt(index);
     }
   }
-  // AFTER:
-  // removePhoneNumber(index: number): void {
-  //   if (this.formModel().phoneNumbers.length > 1) {
-  //     this.formModel.update((model) => ({
-  //       ...model,
-  //       phoneNumbers: model.phoneNumbers.filter((_, i) => i !== index),
-  //     }));
-  //   }
-  // }
 
+  // Submit handler
   onSubmit(): void {
-    // TODO: Replace with submit() function
-    // BEFORE:
     if (this.registrationForm.valid) {
       this.submitted = true;
       this.submittedData = this.registrationForm.value as RegistrationFormModel;
       console.log('Form submitted:', this.submittedData);
     } else {
+      // Mark all fields as touched to show validation errors
       this.registrationForm.markAllAsTouched();
     }
-    // AFTER:
-    // await submit(this.registrationForm, async (form) => {
-    //   try {
-    //     this.submitted.set(true);
-    //     this.submittedData.set({ ...this.formModel() });
-    //     return null;
-    //   } catch (error) {
-    //     return { kind: 'processing_error' as const, error: String(error) };
-    //   }
-    // });
   }
 
+  // Reset handler
   onReset(): void {
-    // TODO: Replace with signal.set()
-    // BEFORE:
     this.registrationForm.reset({
       firstName: '',
       lastName: '',
@@ -246,6 +179,7 @@ export class ReactiveFormExerciseComponent {
       acceptTerms: false,
     });
 
+    // Reset FormArray to single empty entry
     while (this.phoneNumbers.length > 1) {
       this.phoneNumbers.removeAt(1);
     }
@@ -253,17 +187,15 @@ export class ReactiveFormExerciseComponent {
 
     this.submitted = false;
     this.submittedData = null;
-    // AFTER:
-    // this.formModel.set({ ... initial values ... });
-    // this.submitted.set(false);
-    // this.submittedData.set(null);
   }
 
+  // Helper: Check if a control has errors and is touched
   hasError(controlPath: string): boolean {
     const control = this.registrationForm.get(controlPath);
     return control ? control.invalid && control.touched : false;
   }
 
+  // Helper: Get error message for a control
   getErrorMessage(controlPath: string): string {
     const control = this.registrationForm.get(controlPath);
     if (!control || !control.errors) return '';

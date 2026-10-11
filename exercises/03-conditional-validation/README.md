@@ -2,387 +2,246 @@
 
 ## Goals
 
-In this exercise, you will learn how to implement conditional validation in Signal Forms - validators that only apply when certain conditions are met.
+Rules that depend on other fields are declared once in the schema. No `(change)` handlers, no `setValidators()`,
+no `updateValueAndValidity()`.
 
-You will:
+You will use:
 
-- Use `applyWhenValue` to conditionally apply validation rules
-- Use the `when` option for individual validators
-- Handle complex conditional logic with multiple dependencies
-- Manage FormArrays with conditional validation per item
+- `hidden({ when })` for fields that only exist when an option is selected
+- the `when` option to apply a single rule conditionally
+- `applyWhen()` to apply a group of rules conditionally
+- `applyEach()` for rules per array item
+- `validate()` with `valueOf()` for cross-field rules
 
 ## Prerequisites
 
-- Completion of Exercise 02 (Reactive to Signal Forms)
-- Understanding of basic Signal Forms validation
+- Completion of Exercise 01 and 02
 
 ## Setup
 
-1. Start the dev server: `npm run start`
-2. Navigate to `http://localhost:4200/hotel-booking`
-3. Open the component at `src/app/components/hotel-booking/`
+1. Navigate to `http://localhost:4200/hotel-booking`
+2. Open `src/app/components/hotel-booking/`
+3. Compare with the running solution at `http://localhost:4200/solutions/hotel-booking`
 
 ## The Starting Point
 
-The existing Reactive Form demonstrates conditional validation using:
+The form is already a Signal Form with the basic rules and all bindings. The breakfast option is implemented as an
+example. The `TODO` comments in the schema mark the missing rules.
 
-- Manual `setValidators()` / `clearValidators()` calls
-- `(change)` event handlers to update validators
-- `updateValueAndValidity()` after each change
-- Complex boilerplate for each conditional field
+<details>
+<summary>How this looked with Reactive Forms</summary>
 
-**Pain points with Reactive Forms:**
+```typescript
+onBreakfastChange(): void {
+  const control = this.bookingForm.get('breakfastCount');
+  if (this.bookingForm.get('includeBreakfast')?.value) {
+    control?.setValidators([Validators.required, Validators.min(1)]);
+  } else {
+    control?.clearValidators();
+    control?.setValue(null);
+  }
+  control?.updateValueAndValidity();
+}
+```
 
-- Imperative code scattered across multiple methods
-- Easy to forget `updateValueAndValidity()`
-- Validators must be manually added/removed
-- State can get out of sync
+One method per conditional field, called from `(change)` handlers and again in `onSubmit()`.
 
-## Conditional Validation Scenarios
+</details>
 
-This form includes several conditional validation patterns:
+## Scenarios
 
-| Trigger Field | Conditional Field | Condition |
-|---------------|-------------------|-----------|
-| `includeBreakfast` | `breakfastCount` | Required + min(1) when breakfast is included |
-| `includeParking` | `licensePlate` | Required + pattern when parking is included |
-| `needsExtraBed` | `extraBedType` | Required when extra bed is needed |
-| `hasSpecialRequests` | `specialRequestDetails` | Required + minLength(10) when has requests |
-| `requestLateCheckout` | `lateCheckoutTime` | Required + pattern (≥12:00) when late checkout |
-| `paymentMethod` | Card/Invoice fields | Different fields required based on payment type |
-| `guests[i].isChild` | `guests[i].age` | Required + range(0-17) when guest is a child |
+| Trigger               | Field(s)                                 | Technique                              |
+| --------------------- | ---------------------------------------- | -------------------------------------- |
+| `includeBreakfast`    | `breakfastCount`                         | `hidden()` + static rules (example)    |
+| `checkInDate`         | `checkOutDate`                           | `validate()` + `valueOf()` (Task 1)    |
+| `needsExtraBed`       | `extraBedType`                           | `hidden()` + static rules (Task 2)     |
+| `requestLateCheckout` | `lateCheckoutTime`                       | `hidden()` + static rules (Task 2)     |
+| `includeParking`      | `licensePlate` (always visible)          | `applyWhen()` on the field (Task 3)    |
+| `hasSpecialRequests`  | `specialRequestDetails` (always visible) | `when` option on each rule (Task 4)    |
+| `paymentMethod`       | card fields / invoice fields             | `applyWhen()` on the parent (Task 5)   |
+| `guests[i].isChild`   | `guests[i].age`                          | `applyEach()` + `applyWhen()` (Task 6) |
 
 ## Tasks
 
-### Task 1: Update Imports
-
-Replace Reactive Forms with Signal Forms imports.
+### Task 1: Cross-Field Rule (Dates)
 
 <details>
 <summary>Show Solution</summary>
 
 ```typescript
-// BEFORE
-import {
-  ReactiveFormsModule,
-  FormBuilder,
-  FormGroup,
-  FormArray,
-  Validators,
-} from '@angular/forms';
-
-// AFTER
-import {
-  FormField,
-  form,
-  required,
-  min,
-  minLength,
-  pattern,
-  applyWhenValue,
-} from '@angular/forms/signals';
-```
-
-</details>
-
-### Task 2: Create Model Signal
-
-Replace FormBuilder with a signal-based model.
-
-<details>
-<summary>Show Solution</summary>
-
-```typescript
-formModel = signal<HotelBookingModel>({
-  checkInDate: '',
-  checkOutDate: '',
-  roomType: 'standard',
-  guests: [{ firstName: '', lastName: '', isChild: false, age: null }],
-  includeBreakfast: false,
-  breakfastCount: null,
-  includeParking: false,
-  licensePlate: '',
-  // ... rest of the fields
-});
-```
-
-</details>
-
-### Task 3: Implement Conditional Validation with `applyWhenValue`
-
-Use `applyWhenValue` to apply validation only when a condition is met.
-
-<details>
-<summary>Show Solution</summary>
-
-```typescript
-bookingForm = form(this.formModel, (schema) => {
-  // Basic required fields
-  required(schema.checkInDate);
-  required(schema.checkOutDate);
-  required(schema.roomType);
-  required(schema.contactEmail);
-  required(schema.contactPhone);
-
-  // Conditional: Breakfast count only required when breakfast is included
-  applyWhenValue(schema.includeBreakfast, (isIncluded) => isIncluded, (path) => {
-    required(path.breakfastCount, { message: 'Number of guests for breakfast is required' });
-    min(path.breakfastCount, 1, { message: 'At least 1 guest for breakfast' });
-  });
-
-  // Conditional: License plate only required when parking is included
-  applyWhenValue(schema.includeParking, (isIncluded) => isIncluded, (path) => {
-    required(path.licensePlate, { message: 'License plate is required' });
-    pattern(path.licensePlate, /^[A-Z]{1,3}[-\s]?[A-Z]{1,2}[-\s]?\d{1,4}$/i, {
-      message: 'Invalid license plate format',
-    });
-  });
-
-  // Conditional: Extra bed type only required when extra bed is needed
-  applyWhenValue(schema.needsExtraBed, (needs) => needs, (path) => {
-    required(path.extraBedType, { message: 'Please select extra bed type' });
-  });
-
-  // Conditional: Special request details only required when has requests
-  applyWhenValue(schema.hasSpecialRequests, (has) => has, (path) => {
-    required(path.specialRequestDetails, { message: 'Please describe your requests' });
-    minLength(path.specialRequestDetails, 10, { message: 'Please provide more details (min 10 chars)' });
-  });
-
-  // Conditional: Late checkout time only required when late checkout is requested
-  applyWhenValue(schema.requestLateCheckout, (requested) => requested, (path) => {
-    required(path.lateCheckoutTime, { message: 'Please specify checkout time' });
-    pattern(path.lateCheckoutTime, /^(1[2-9]|2[0-3]):[0-5][0-9]$/, {
-      message: 'Checkout time must be 12:00 or later',
-    });
-  });
-});
-```
-
-</details>
-
-### Task 4: Implement Payment Method Conditional Validation
-
-Handle multiple conditional fields based on payment method selection.
-
-<details>
-<summary>Show Solution</summary>
-
-```typescript
-// Credit card fields - only when payment method is credit_card
-applyWhenValue(
-  schema.paymentMethod,
-  (method) => method === 'credit_card',
-  (path) => {
-    required(path.cardNumber, { message: 'Card number is required' });
-    pattern(path.cardNumber, /^\d{16}$/, { message: 'Card number must be 16 digits' });
-
-    required(path.cardExpiry, { message: 'Expiry date is required' });
-    pattern(path.cardExpiry, /^(0[1-9]|1[0-2])\/\d{2}$/, { message: 'Format: MM/YY' });
-
-    required(path.cardCvv, { message: 'CVV is required' });
-    pattern(path.cardCvv, /^\d{3,4}$/, { message: 'CVV must be 3-4 digits' });
-  }
-);
-
-// Invoice fields - only when payment method is invoice
-applyWhenValue(
-  schema.paymentMethod,
-  (method) => method === 'invoice',
-  (path) => {
-    required(path.companyName, { message: 'Company name is required' });
-    required(path.vatNumber, { message: 'VAT number is required' });
-    pattern(path.vatNumber, /^[A-Z]{2}\d{9,12}$/i, {
-      message: 'Invalid VAT number format',
-    });
-  }
-);
-```
-
-</details>
-
-### Task 5: Implement Guest Array with Conditional Validation
-
-Apply conditional validation to each item in a FormArray.
-
-<details>
-<summary>Show Solution</summary>
-
-```typescript
-// Guest array validation
-forEachItem(schema.guests, (guest) => {
-  required(guest.firstName, { message: 'First name is required' });
-  minLength(guest.firstName, 2);
-
-  required(guest.lastName, { message: 'Last name is required' });
-  minLength(guest.lastName, 2);
-
-  // Conditional: Age only required when guest is a child
-  applyWhenValue(guest.isChild, (isChild) => isChild, (guestPath) => {
-    required(guestPath.age, { message: 'Age is required for children' });
-    min(guestPath.age, 0, { message: 'Age cannot be negative' });
-    max(guestPath.age, 17, { message: 'Children must be under 18' });
-  });
-});
-```
-
-</details>
-
-### Task 6: Alternative - Using `when` Option
-
-For simpler conditions, use the `when` option directly on validators.
-
-<details>
-<summary>Show Solution</summary>
-
-```typescript
-// Alternative: Using "when" option instead of applyWhenValue
-required(schema.breakfastCount, {
-  message: 'Number of guests for breakfast is required',
-  when: (ctx) => ctx.valueOf(schema.includeBreakfast),
-});
-
-min(schema.breakfastCount, 1, {
-  message: 'At least 1 guest for breakfast',
-  when: (ctx) => ctx.valueOf(schema.includeBreakfast),
-});
-
-// When to use which approach:
-// - applyWhenValue: Multiple validators with same condition, cleaner grouping
-// - when option: Single validator with simple condition
-```
-
-</details>
-
-### Task 7: Cross-Field Validation (Date Range)
-
-Implement cross-field validation for check-in/check-out dates.
-
-<details>
-<summary>Show Solution</summary>
-
-```typescript
-// Cross-field validation: checkout must be after check-in
-custom(schema.checkOutDate, (value, ctx) => {
-  const checkIn = ctx.valueOf(schema.checkInDate);
-  if (checkIn && value && new Date(value) <= new Date(checkIn)) {
-    return { message: 'Check-out must be after check-in date' };
+validate(path.checkOutDate, ({ value, valueOf }) => {
+  const checkOut = value();
+  const checkIn = valueOf(path.checkInDate);
+  if (checkIn && checkOut && new Date(checkOut) <= new Date(checkIn)) {
+    return { kind: 'dateRange', message: 'Check-out must be after check-in date' };
   }
   return null;
 });
 ```
 
+`valueOf()` is reactive: the rule re-runs when the check-in date changes. With a `Date` model you could also use
+`minDate(path.checkOutDate, ({ valueOf }) => ...)`.
+
 </details>
 
-### Task 8: Update Template
+### Task 2: Hidden Fields (Extra Bed, Late Checkout)
 
-Remove event handlers and simplify the template.
+A hidden field does not contribute to validity, touched or dirty state of the form. The rules stay static, the
+template reacts with `@if (!field().hidden())`.
 
 <details>
 <summary>Show Solution</summary>
 
+```typescript
+hidden(path.extraBedType, { when: ({ valueOf }) => !valueOf(path.needsExtraBed) });
+required(path.extraBedType, { message: 'Please select extra bed type' });
+
+hidden(path.lateCheckoutTime, { when: ({ valueOf }) => !valueOf(path.requestLateCheckout) });
+required(path.lateCheckoutTime, { message: 'Please specify checkout time' });
+pattern(path.lateCheckoutTime, /^(1[2-9]|2[0-3]):[0-5][0-9]$/, {
+  message: 'Checkout time must be 12:00 or later',
+});
+```
+
 ```html
-<!-- BEFORE: Required event handler -->
-<input
-  type="checkbox"
-  formControlName="includeBreakfast"
-  (change)="onBreakfastChange()"
-/>
-
-<!-- AFTER: No event handler needed! -->
-<input
-  type="checkbox"
-  [formField]="bookingForm.includeBreakfast"
-/>
-
-<!-- Conditional field visibility -->
-@if (formModel().includeBreakfast) {
-  <div class="conditional-field">
-    <input [formField]="bookingForm.breakfastCount" />
-    @if (bookingForm.breakfastCount().invalid() && bookingForm.breakfastCount().touched()) {
-      @for (error of bookingForm.breakfastCount().errors(); track error.message) {
-        <span class="error">{{ error.message }}</span>
-      }
-    }
-  </div>
+<!-- BEFORE: @if (formModel().needsExtraBed) -->
+@if (!bookingForm.extraBedType().hidden()) {
+<mat-select [formField]="bookingForm.extraBedType">...</mat-select>
 }
+```
+
+</details>
+
+### Task 3: applyWhen() on a Field (License Plate)
+
+The field stays visible, two rules apply only when parking is included.
+
+<details>
+<summary>Show Solution</summary>
+
+```typescript
+applyWhen(
+  path.licensePlate,
+  ({ valueOf }) => valueOf(path.includeParking),
+  (plate) => {
+    required(plate, { message: 'License plate is required' });
+    pattern(plate, /^[A-Z]{1,3}[-\s]?[A-Z]{1,2}[-\s]?\d{1,4}$/i, {
+      message: 'Invalid license plate format (e.g., B-AB 1234)',
+    });
+  },
+);
+```
+
+</details>
+
+### Task 4: The `when` Option (Special Requests)
+
+<details>
+<summary>Show Solution</summary>
+
+```typescript
+required(path.specialRequestDetails, {
+  message: 'Please describe your requests',
+  when: ({ valueOf }) => valueOf(path.hasSpecialRequests),
+});
+minLength(path.specialRequestDetails, 10, {
+  message: 'Please provide more details (min 10 chars)',
+  when: ({ valueOf }) => valueOf(path.hasSpecialRequests),
+});
+```
+
+</details>
+
+### Task 5 (Bonus): applyWhen() on the Parent (Payment)
+
+`applyWhen()` on the root path groups rules for several fields under one condition.
+
+<details>
+<summary>Show Solution</summary>
+
+```typescript
+applyWhen(
+  path,
+  ({ valueOf }) => valueOf(path.paymentMethod) === 'credit_card',
+  (booking) => {
+    required(booking.cardNumber, { message: 'Card number is required' });
+    pattern(booking.cardNumber, /^\d{16}$/, { message: 'Card number must be 16 digits' });
+    required(booking.cardExpiry, { message: 'Expiry date is required' });
+    pattern(booking.cardExpiry, /^(0[1-9]|1[0-2])\/\d{2}$/, { message: 'Format: MM/YY' });
+    required(booking.cardCvv, { message: 'CVV is required' });
+    pattern(booking.cardCvv, /^\d{3,4}$/, { message: 'CVV must be 3-4 digits' });
+  },
+);
+
+applyWhen(
+  path,
+  ({ valueOf }) => valueOf(path.paymentMethod) === 'invoice',
+  (booking) => {
+    required(booking.companyName, { message: 'Company name is required' });
+    required(booking.vatNumber, { message: 'VAT number is required' });
+    pattern(booking.vatNumber, /^[A-Z]{2}\d{9,12}$/i, { message: 'Invalid VAT number format' });
+  },
+);
+```
+
+</details>
+
+### Task 6 (Bonus): Arrays with applyEach() (Guests)
+
+<details>
+<summary>Show Solution</summary>
+
+```typescript
+applyEach(path.guests, (guest) => {
+  required(guest.firstName, { message: 'First name is required' });
+  minLength(guest.firstName, 2, { message: 'Min 2 characters' });
+  required(guest.lastName, { message: 'Last name is required' });
+  minLength(guest.lastName, 2, { message: 'Min 2 characters' });
+
+  applyWhen(
+    guest.age,
+    ({ valueOf }) => valueOf(guest.isChild),
+    (age) => {
+      required(age, { message: 'Age is required for children' });
+      min(age, 0, { message: 'Age cannot be negative' });
+      max(age, 17, { message: 'Children must be under 18' });
+    },
+  );
+});
 ```
 
 </details>
 
 ## Completion Criteria
 
-- [ ] All conditional validation implemented with `applyWhenValue` or `when`
-- [ ] No manual `setValidators()` / `clearValidators()` calls
-- [ ] No `(change)` event handlers for validation updates
-- [ ] Payment method switches correctly between credit card and invoice fields
-- [ ] Guest child age validation works per array item
-- [ ] Cross-field date validation works
-- [ ] Form submits only when all conditional validations pass
+- [ ] Check-out date is validated against the check-in date
+- [ ] Extra bed type and late checkout time use `hidden()`
+- [ ] License plate rules only apply when parking is included
+- [ ] Special request details only validate when the checkbox is checked
+- [ ] (Bonus) Payment fields validate depending on the payment method
+- [ ] (Bonus) Child age is validated per guest
+- [ ] No `(change)` handlers, no imperative validator management
 
 <details>
-<summary>Conditional Validation Cheat Sheet</summary>
+<summary>Which technique when?</summary>
 
-| Reactive Forms | Signal Forms |
-|----------------|--------------|
-| `setValidators()` in change handler | `applyWhenValue(trigger, condition, validators)` |
-| `clearValidators()` + reset | Automatic - validators only run when condition is true |
-| `updateValueAndValidity()` | Automatic |
-| Manual state management | Declarative schema |
-| `when` option | `required(field, { when: (ctx) => condition })` |
-| Reading other fields | `ctx.valueOf(otherField)` |
-
-**`applyWhenValue` Signature:**
-
-```typescript
-applyWhenValue(
-  triggerPath,              // The field that triggers the condition
-  conditionFn,              // (value) => boolean - when to apply
-  validatorsFn              // (path) => { ...validators } - what to apply
-);
-```
-
-**`when` Option:**
-
-```typescript
-required(schema.field, {
-  message: 'Required when condition is true',
-  when: (ctx) => ctx.valueOf(schema.otherField) === 'someValue',
-});
-```
-
-</details>
-
-<details>
-<summary>Key Benefits</summary>
-
-### 1. Declarative Instead of Imperative
-
-Validation rules are declared in one place, not scattered across event handlers.
-
-### 2. Automatic State Management
-
-No need to manually call `updateValueAndValidity()` - Signal Forms handles it.
-
-### 3. Type Safety
-
-`applyWhenValue` provides typed access to the schema paths.
-
-### 4. Cleaner Templates
-
-No `(change)` handlers needed for validation - just bind the checkbox.
-
-### 5. Easier Testing
-
-Validation logic is centralized and easier to test.
+| Situation                                                     | Use                                    |
+| ------------------------------------------------------------- | -------------------------------------- |
+| Field only exists in some cases (not rendered otherwise)      | `hidden({ when })`                     |
+| Field is rendered, one rule applies conditionally             | `when` option on the rule              |
+| Field is rendered, several rules apply conditionally          | `applyWhen(path.field, ...)`           |
+| Several fields share one condition                            | `applyWhen(path, ...)` on the parent   |
+| Rules depend on the shape of a union type                     | `applyWhenValue(path, typeGuard, ...)` |
+| Field should be visible but not editable                      | `disabled({ when })` / `readonly()`    |
+| Error should land on a different field than the validated one | `validateTree()` with `fieldTree`      |
 
 </details>
 
 <details>
 <summary>Solution Files</summary>
 
-See the complete solution in:
-
-- `signal-forms-workshop/exercises/03-conditional-validation/solution/`
+- `exercises/03-conditional-validation/solution/hotel-booking.component.ts`
+- `exercises/03-conditional-validation/solution/hotel-booking.component.html`
+- Running: `http://localhost:4200/solutions/hotel-booking`
 
 </details>

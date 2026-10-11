@@ -1,105 +1,89 @@
 <mat-card class="profile-card">
   <mat-card-header>
     <mat-icon mat-card-avatar>person</mat-icon>
-    <mat-card-title>Contact Profile</mat-card-title>
-    <mat-card-subtitle>Reactive Forms + NgRx SignalStore</mat-card-subtitle>
+    <mat-card-title>Contact Profile (Exercise)</mat-card-title>
+    <mat-card-subtitle>Signal Forms + NgRx SignalStore</mat-card-subtitle>
   </mat-card-header>
 
   <mat-card-content>
-    <form [formGroup]="profileForm" class="profile-form">
+    <!-- TODO 6: Bind the form with [formRoot]="profileForm" and the inputs with [formField] -->
+    <form class="profile-form">
       <div class="form-row">
         <mat-form-field appearance="outline">
           <mat-label>First Name</mat-label>
-          <input matInput formControlName="firstName" />
-          @if (profileForm.get('firstName')?.hasError('required')) {
-            <mat-error>First name is required</mat-error>
+          <input matInput placeholder="Enter first name" />
+          <!-- TODO 7: Show errors
+          @if (profileForm.firstName().touched() && profileForm.firstName().invalid()) {
+            @for (error of profileForm.firstName().errors(); track error.kind) {
+              <mat-error>{{ error.message }}</mat-error>
+            }
           }
+          -->
         </mat-form-field>
 
         <mat-form-field appearance="outline">
           <mat-label>Last Name</mat-label>
-          <input matInput formControlName="lastName" />
-          @if (profileForm.get('lastName')?.hasError('required')) {
-            <mat-error>Last name is required</mat-error>
-          }
+          <input matInput placeholder="Enter last name" />
         </mat-form-field>
       </div>
 
       <div class="form-row">
         <mat-form-field appearance="outline">
           <mat-label>Email</mat-label>
-          <input matInput formControlName="email" type="email" />
-          @if (profileForm.get('email')?.hasError('required')) {
-            <mat-error>Email is required</mat-error>
-          } @else if (profileForm.get('email')?.hasError('email')) {
-            <mat-error>Please enter a valid email</mat-error>
-          }
+          <input matInput type="email" placeholder="Enter email" />
         </mat-form-field>
 
         <mat-form-field appearance="outline">
           <mat-label>Phone</mat-label>
-          <input matInput formControlName="phone" type="tel" />
+          <input matInput type="tel" placeholder="Enter phone" />
         </mat-form-field>
       </div>
 
       <div class="form-row">
         <mat-form-field appearance="outline">
           <mat-label>Company</mat-label>
-          <input matInput formControlName="company" />
+          <input matInput placeholder="Enter company" />
         </mat-form-field>
 
         <mat-form-field appearance="outline">
           <mat-label>Role</mat-label>
-          <input matInput formControlName="role" />
+          <input matInput placeholder="Enter role" />
         </mat-form-field>
       </div>
 
       <mat-form-field appearance="outline" class="full-width">
         <mat-label>Bio</mat-label>
-        <textarea matInput formControlName="bio" rows="3"></textarea>
-        <mat-hint>{{ profileForm.get('bio')?.value?.length || 0 }} / 500</mat-hint>
-        @if (profileForm.get('bio')?.hasError('maxlength')) {
-          <mat-error>Bio cannot exceed 500 characters</mat-error>
-        }
+        <textarea matInput rows="3" placeholder="Enter bio"></textarea>
+        <!-- TODO 8: Character count: {{ profileForm.bio().value().length }} / 500 -->
       </mat-form-field>
+
+      <!-- Actions -->
+      <!-- TODO 9: type="submit", disable while !profileForm().dirty() || profileForm().submitting() -->
+      <div class="form-actions">
+        <button mat-stroked-button type="button" (click)="resetForm()">
+          <mat-icon>undo</mat-icon>
+          Reset
+        </button>
+        <button mat-flat-button type="button">
+          <mat-icon>save</mat-icon>
+          Save Profile
+        </button>
+      </div>
     </form>
 
     <!-- Store State Display -->
     <div class="store-state">
-      <h4>Store State</h4>
+      <h4>Store State (persisted)</h4>
       <p><strong>Full Name:</strong> {{ store.fullName() }}</p>
-      <p><strong>Unsaved Changes:</strong> {{ store.hasUnsavedChanges() ? 'Yes' : 'No' }}</p>
-      @if (store.lastSaved()) {
-        <p><strong>Last Saved:</strong> {{ store.lastSaved() | date: 'medium' }}</p>
+      <p><strong>Saving:</strong> {{ store.saving() ? 'Yes' : 'No' }}</p>
+      @if (store.lastSaved(); as lastSaved) {
+        <p><strong>Last Saved:</strong> {{ lastSaved | date: 'medium' }}</p>
       }
+      <!-- TODO 10: Form state: profileForm().dirty() / valid() -->
+      <button mat-button type="button" (click)="store.simulateRemoteUpdate()">
+        <mat-icon>cloud_sync</mat-icon>
+        Simulate remote update
+      </button>
     </div>
   </mat-card-content>
-
-  <mat-card-actions align="end">
-    <button
-      mat-button
-      color="warn"
-      (click)="resetForm()"
-      [disabled]="!store.hasUnsavedChanges() || store.loading()"
-    >
-      <mat-icon>undo</mat-icon>
-      Reset
-    </button>
-    @if (store.loading()) {
-      <button mat-raised-button color="primary" disabled>
-        <mat-spinner diameter="20"></mat-spinner>
-        Saving...
-      </button>
-    } @else {
-      <button
-        mat-raised-button
-        color="primary"
-        (click)="saveProfile()"
-        [disabled]="profileForm.invalid || !store.hasUnsavedChanges()"
-      >
-        <mat-icon>save</mat-icon>
-        Save Profile
-      </button>
-    }
-  </mat-card-actions>
 </mat-card>

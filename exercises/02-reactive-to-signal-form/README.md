@@ -1,104 +1,87 @@
-# Exercise 02 – Reactive Form to Signal Forms
+# Exercise 02 – Reactive Form to Signal Forms (partial migration with compatForm)
 
 ## Goals
 
-In this exercise, you will learn how to migrate a complex Angular Reactive Form to the new Signal Forms API.
+Real applications cannot migrate every form at once. In this exercise you migrate a Reactive Form **top-down**:
+the form becomes a Signal Form, but one control (the password with its custom `ValidatorFn`) stays a `FormControl`.
 
 You will:
 
-- Understand how FormGroup maps to Signal Forms
-- Convert nested FormGroups to nested signal objects
-- Migrate FormArrays to signal-based arrays
-- Use computed signals for complex validation (password strength, cross-field)
-- Replace form validation patterns with Signal Forms equivalents
+- Nest an existing `FormControl` inside the model signal and wrap it with `compatForm()`
+- Migrate nested objects (`FormGroup`) and arrays (`FormArray`) to plain data plus `apply()` / `applyEach()`
+- Replace the group-level cross-field validator with `validate()` and `valueOf()`
+- Read `CompatValidationError`s from the kept control and unwrap the value with `extractValue()`
 
 ## Prerequisites
 
-- Understanding of Angular Reactive Forms (FormGroup, FormControl, FormArray)
+- Understanding of Reactive Forms (`FormGroup`, `FormControl`, `FormArray`, `Validators`)
 - Completion of Exercise 01
-- Familiarity with custom validators
 
 ## Setup
 
-1. Start the dev server: `npm run start`
-2. Navigate to `http://localhost:4200/reactive-form`
-3. Open the component at `src/app/components/reactive-form/`
+1. Navigate to `http://localhost:4200/reactive-form`
+2. Open `src/app/components/reactive-form/`
+3. Compare with the running solution at `http://localhost:4200/solutions/reactive-form`
 
 ## The Starting Point
 
-The existing Reactive Form includes:
-
-- **FormBuilder** with FormGroup and FormArray
-- **Nested FormGroup** for address data
-- **FormArray** for dynamic phone numbers (add/remove)
-- **Custom validator** for password strength
-- **Cross-field validator** for password confirmation
-- Standard validators (required, email, pattern, minLength)
+- `FormBuilder` with a nested `FormGroup` (`address`) and a `FormArray` (`phoneNumbers`)
+- Custom validator `passwordStrengthValidator` (we keep this one)
+- Group validator `passwordMatchValidator` (we replace this one)
+- `Validators.requiredTrue` for the terms checkbox
 
 ## Tasks
 
 ### Task 1: Update Imports
 
-Replace the Reactive Forms imports with Signal Forms.
-
 <details>
 <summary>Show Solution</summary>
 
 ```typescript
-// BEFORE
-import {
-  ReactiveFormsModule,
-  FormBuilder,
-  FormGroup,
-  FormArray,
-  Validators,
-  AbstractControl,
-  ValidationErrors,
-} from '@angular/forms';
+// Still needed for the kept control
+import { AbstractControl, FormControl, ValidationErrors, Validators } from '@angular/forms';
 
-// AFTER
-import { signal, computed } from '@angular/core';
 import {
   FormField,
-  form,
-  submit,
-  required,
+  FormRoot,
+  ValidationError,
+  apply,
+  applyEach,
   email,
   minLength,
   pattern,
+  required,
+  validate,
 } from '@angular/forms/signals';
+import { CompatValidationError, compatForm, extractValue } from '@angular/forms/signals/compat';
 ```
+
+Add `FormField` and `FormRoot` to the component `imports`, remove `ReactiveFormsModule`.
 
 </details>
 
-### Task 2: Create the Model Signal
+### Task 2: Keep the Password Control, Build the Model Signal
 
-Replace the FormBuilder-based form with a signal-based model.
+The `FormControl` becomes a leaf of the model. Everything else is plain data.
 
 <details>
 <summary>Show Solution</summary>
 
 ```typescript
-// BEFORE
-registrationForm: FormGroup = this.fb.group({
-  firstName: ['', [Validators.required, Validators.minLength(2)]],
-  lastName: ['', [Validators.required, Validators.minLength(2)]],
-  // ... more fields
+type RegistrationModel = Omit<RegistrationFormModel, 'password'> & { password: FormControl<string> };
+
+private readonly passwordControl = new FormControl('', {
+  nonNullable: true,
+  validators: [Validators.required, passwordStrengthValidator],
 });
 
-// AFTER
-formModel = signal<RegistrationFormModel>({
+readonly formModel = signal<RegistrationModel>({
   firstName: '',
   lastName: '',
   email: '',
-  password: '',
+  password: this.passwordControl, // ← FormControl as a leaf
   confirmPassword: '',
-  address: {
-    street: '',
-    city: '',
-    postalCode: '',
-    country: '',
-  },
+  address: { street: '', city: '', postalCode: '', country: '' },
   phoneNumbers: [{ type: 'mobile', number: '' }],
   acceptTerms: false,
 });
@@ -106,174 +89,117 @@ formModel = signal<RegistrationFormModel>({
 
 </details>
 
-### Task 3: Create the Form with Validation Schema
+### Task 3: compatForm() with Rules for the Migrated Fields
 
-Use the `form()` function with built-in validators. For complex validation, use `pattern()` or computed signals.
+`compatForm()` works like `form()` but understands `AbstractControl`s inside the model. You cannot add Signal
+Forms rules to `path.password` (the control validates itself), but you can read it with `valueOf()`.
 
 <details>
 <summary>Show Solution</summary>
 
 ```typescript
-// Create the form with validation schema
-registrationForm = form(this.formModel, (schema) => {
-  // Personal Info
-  required(schema.firstName, { message: 'First name is required' });
-  minLength(schema.firstName, 2, { message: 'First name must be at least 2 characters' });
+// address.schema.ts - reusable
+export const addressSchema = schema<Address>((address) => {
+  required(address.street, { message: 'Street is required' });
+  required(address.city, { message: 'City is required' });
+  required(address.postalCode, { message: 'Postal code is required' });
+  pattern(address.postalCode, /^\d{5}$/, { message: 'Postal code must be 5 digits' });
+  required(address.country, { message: 'Country is required' });
+});
 
-  required(schema.lastName, { message: 'Last name is required' });
-  minLength(schema.lastName, 2, { message: 'Last name must be at least 2 characters' });
+readonly registrationForm = compatForm(this.formModel, (path) => {
+  required(path.firstName, { message: 'First name is required' });
+  minLength(path.firstName, 2, { message: 'First name must be at least 2 characters' });
+  required(path.lastName, { message: 'Last name is required' });
+  minLength(path.lastName, 2, { message: 'Last name must be at least 2 characters' });
+  required(path.email, { message: 'Email is required' });
+  email(path.email, { message: 'Please enter a valid email address' });
 
-  required(schema.email, { message: 'Email is required' });
-  email(schema.email, { message: 'Please enter a valid email address' });
+  // Cross-field: replaces passwordMatchValidator
+  required(path.confirmPassword, { message: 'Please confirm your password' });
+  validate(path.confirmPassword, ({ value, valueOf }) =>
+    value() && value() !== valueOf(path.password)
+      ? { kind: 'passwordMismatch', message: 'Passwords do not match' }
+      : null,
+  );
 
-  // Password - use pattern for strength validation
-  required(schema.password, { message: 'Password is required' });
-  minLength(schema.password, 8, { message: 'Password must be at least 8 characters' });
-  pattern(schema.password, /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, {
-    message: 'Password must contain uppercase, lowercase and number',
+  // Nested object: replaces fb.group({...})
+  apply(path.address, addressSchema);
+
+  // Array: replaces fb.array([...]) + createPhoneNumberGroup()
+  applyEach(path.phoneNumbers, (phone) => {
+    required(phone.number, { message: 'Phone number is required' });
+    pattern(phone.number, /^\+?[\d\s-]{6,}$/, { message: 'Invalid phone number format' });
   });
 
-  required(schema.confirmPassword, { message: 'Please confirm your password' });
-
-  // Nested Address
-  required(schema.address.street, { message: 'Street is required' });
-  required(schema.address.city, { message: 'City is required' });
-  required(schema.address.postalCode, { message: 'Postal code is required' });
-  pattern(schema.address.postalCode, /^\d{5}$/, { message: 'Postal code must be 5 digits' });
-  required(schema.address.country, { message: 'Country is required' });
+  // Replaces Validators.requiredTrue: required() treats `false` as empty
+  required(path.acceptTerms, { message: 'You must accept the terms' });
 });
 ```
 
 </details>
 
-### Task 4: Implement Cross-Field Validation with Computed Signals
+### Task 4: Template
 
-For validation that compares multiple fields (like password confirmation), use computed signals.
+`[formField]` binds compat fields exactly like Signal Forms fields. Arrays are iterated on the `FieldTree`
+itself, nested fields are reached by property access.
 
 <details>
 <summary>Show Solution</summary>
-
-```typescript
-// BEFORE (Reactive Forms group validator)
-this.fb.group(
-  { password: [...], confirmPassword: [...] },
-  { validators: [passwordMatchValidator] }
-);
-
-// AFTER (Computed signal for cross-field validation)
-passwordsMatch = computed(() => {
-  const model = this.formModel();
-  if (!model.password || !model.confirmPassword) return true;
-  return model.password === model.confirmPassword;
-});
-
-// Password strength feedback (computed signal)
-passwordStrength = computed(() => {
-  const password = this.formModel().password;
-  if (!password) return { valid: true, errors: [] as string[] };
-
-  const errors: string[] = [];
-  if (password.length < 8) errors.push('at least 8 characters');
-  if (!/[A-Z]/.test(password)) errors.push('one uppercase letter');
-  if (!/[a-z]/.test(password)) errors.push('one lowercase letter');
-  if (!/[0-9]/.test(password)) errors.push('one number');
-  if (!/[!@#$%^&*]/.test(password)) errors.push('one special character');
-
-  return { valid: errors.length === 0, errors };
-});
-
-// Terms acceptance
-termsAccepted = computed(() => this.formModel().acceptTerms === true);
-
-// Overall form validity
-isFormValid = computed(() =>
-  this.registrationForm().valid() && this.passwordsMatch() && this.termsAccepted()
-);
-```
-
-**Template:**
 
 ```html
-<!-- Cross-field validation display -->
-@if (!passwordsMatch() && registrationForm.confirmPassword().touched()) {
-  <span class="error">Passwords do not match</span>
-}
+<form [formRoot]="registrationForm">
+  <!-- BEFORE: formControlName="firstName" -->
+  <input matInput [formField]="registrationForm.firstName" />
 
-<!-- Password strength feedback -->
-@if (formModel().password && !passwordStrength().valid) {
-  <div class="password-hint">
-    Password must contain: {{ passwordStrength().errors.join(', ') }}
-  </div>
+  <!-- The kept FormControl -->
+  <input matInput type="password" [formField]="registrationForm.password" />
+  @if (registrationForm.password().touched() && registrationForm.password().invalid()) { @for (error
+  of registrationForm.password().errors(); track error.kind) {
+  <mat-error>{{ passwordErrorMessage(error) }}</mat-error>
+  } }
+
+  <!-- BEFORE: formGroupName="address" + formControlName="street" -->
+  <input matInput [formField]="registrationForm.address.street" />
+
+  <!-- BEFORE: @for (phone of phoneNumbers.controls) with [formGroupName]="i" -->
+  @for (phone of registrationForm.phoneNumbers; track phone; let i = $index) {
+  <mat-select [formField]="phone.type">...</mat-select>
+  <input matInput [formField]="phone.number" />
+  <button type="button" (click)="removePhoneNumber(i)">Remove</button>
+  }
+
+  <mat-checkbox [formField]="registrationForm.acceptTerms">I accept the terms</mat-checkbox>
+</form>
+```
+
+Errors of the kept control are `CompatValidationError`s: `kind` is the Reactive Forms error key, `context` the
+error value, and there is no `message`. Map them in the component:
+
+```typescript
+passwordErrorMessage(error: ValidationError): string {
+  switch (error.kind) {
+    case 'required':
+      return 'Password is required';
+    case 'passwordStrength': {
+      const { missing } = (error as CompatValidationError<{ missing: string[] }>).context;
+      return `Password must contain: ${missing.join(', ')}`;
+    }
+    default:
+      return 'Invalid password';
+  }
 }
 ```
 
 </details>
 
-### Task 5: Handle Nested Objects
-
-Convert nested FormGroup to nested signal object validation.
+### Task 5: Array Operations
 
 <details>
 <summary>Show Solution</summary>
 
 ```typescript
-// BEFORE (nested FormGroup)
-address: this.fb.group({
-  street: ['', [Validators.required]],
-  city: ['', [Validators.required]],
-  postalCode: ['', [Validators.required, Validators.pattern(/^\d{5}$/)]],
-  country: ['', [Validators.required]],
-})
-
-// AFTER (Signal Forms nested object)
-// Access nested properties directly in the schema
-registrationForm = form(this.formModel, (schema) => {
-  required(schema.address.street, { message: 'Street is required' });
-  required(schema.address.city, { message: 'City is required' });
-  required(schema.address.postalCode, { message: 'Postal code is required' });
-  pattern(schema.address.postalCode, /^\d{5}$/, { message: 'Postal code must be 5 digits' });
-  required(schema.address.country, { message: 'Country is required' });
-});
-```
-
-**Template Changes:**
-
-```html
-<!-- BEFORE -->
-<fieldset formGroupName="address">
-  <input formControlName="street" />
-</fieldset>
-
-<!-- AFTER -->
-<fieldset>
-  <input [formField]="registrationForm.address.street" />
-</fieldset>
-```
-
-</details>
-
-### Task 6: Migrate FormArray
-
-Convert FormArray to signal-based array handling.
-
-<details>
-<summary>Show Solution</summary>
-
-```typescript
-// BEFORE (FormArray with push/removeAt)
-get phoneNumbers(): FormArray {
-  return this.registrationForm.get('phoneNumbers') as FormArray;
-}
-
-addPhoneNumber(): void {
-  this.phoneNumbers.push(this.createPhoneNumberGroup());
-}
-
-removePhoneNumber(index: number): void {
-  this.phoneNumbers.removeAt(index);
-}
-
-// AFTER (Signal-based array)
+// BEFORE: this.phoneNumbers.push(this.createPhoneNumberGroup()) / removeAt(index)
 addPhoneNumber(): void {
   this.formModel.update((model) => ({
     ...model,
@@ -289,166 +215,101 @@ removePhoneNumber(index: number): void {
 }
 ```
 
-**Template Changes:**
-
-```html
-<!-- BEFORE -->
-@for (phone of phoneNumbers.controls; track $index; let i = $index) {
-  <div [formGroupName]="'phoneNumbers'">
-    <div [formGroupName]="i">
-      <select formControlName="type">...</select>
-      <input formControlName="number" />
-    </div>
-  </div>
-}
-
-<!-- AFTER -->
-@for (phone of formModel().phoneNumbers; track $index; let i = $index) {
-  <div>
-    <select [formField]="registrationForm.phoneNumbers[i].type">...</select>
-    <input [formField]="registrationForm.phoneNumbers[i].number" />
-  </div>
-}
-```
-
 </details>
 
-### Task 7: Update Error Display
+### Task 6: Submission and Reset
 
-Update error display to use Signal Forms patterns.
-
-<details>
-<summary>Show Solution</summary>
-
-```html
-<!-- BEFORE -->
-@if (hasError('firstName')) {
-  <span class="error">{{ getErrorMessage('firstName') }}</span>
-}
-
-<!-- AFTER -->
-@if (registrationForm.firstName().invalid() && registrationForm.firstName().touched()) {
-  @for (error of registrationForm.firstName().errors(); track error.message) {
-    <span class="error">{{ error.message }}</span>
-  }
-}
-```
-
-</details>
-
-### Task 8: Update Form Submission
-
-Update submit handler to use Signal Forms patterns.
+The raw model contains the `FormControl` object. `extractValue()` unwraps it into plain data.
 
 <details>
 <summary>Show Solution</summary>
 
 ```typescript
-// BEFORE
-onSubmit(): void {
-  if (this.registrationForm.valid) {
-    this.submittedData = this.registrationForm.value as RegistrationFormModel;
-  } else {
-    this.registrationForm.markAllAsTouched();
-  }
-}
+readonly registrationForm = compatForm(this.formModel, schema, {
+  submission: {
+    action: async () => {
+      await this.fakeApiCall();
+      const data = extractValue(this.registrationForm); // RegistrationFormModel
+      this.submittedData.set(data);
+    },
+    onInvalid: (field) => field().errorSummary()[0]?.fieldTree().focusBoundControl(),
+  },
+});
 
-// AFTER (using submit function)
-async onSubmit(): Promise<void> {
-  // Check computed validations first
-  if (!this.passwordsMatch() || !this.termsAccepted()) {
-    return;
-  }
-
-  await submit(this.registrationForm, async (form) => {
-    try {
-      this.submitted.set(true);
-      this.submittedData.set({ ...this.formModel() });
-      return null;
-    } catch (error) {
-      return { kind: 'processing_error' as const, error: String(error) };
-    }
-  });
+onReset(): void {
+  this.formModel.set({ ...INITIAL_VALUE, password: this.passwordControl });
+  this.passwordControl.reset('');
+  this.registrationForm().reset();
+  this.submittedData.set(null);
 }
 ```
 
 </details>
 
+### Bonus: Bottom-up with SignalFormControl
+
+The opposite direction: keep the `FormGroup`, migrate single controls.
+
+```typescript
+import { SignalFormControl } from '@angular/forms/signals/compat';
+
+emailControl = new SignalFormControl('', (p) => {
+  required(p, { message: 'Email is required' });
+});
+
+form = new FormGroup({
+  name: new FormControl('Alice'),
+  email: this.emailControl, // bidirectionally synchronized
+});
+```
+
+```html
+<form [formGroup]="form">
+  <input formControlName="name" />
+  <input [formField]="emailControl.fieldTree" />
+</form>
+```
+
 ## Completion Criteria
 
-- [ ] `ReactiveFormsModule` replaced with Signal Forms imports
-- [ ] Model is a `signal<RegistrationFormModel>`
-- [ ] Password strength validation using `pattern()` + computed signal for feedback
-- [ ] Cross-field password match validation with computed signal
-- [ ] Nested address object validates correctly
-- [ ] Phone number array supports add/remove with `signal.update()`
-- [ ] All `formControlName` replaced with `[formField]`
-- [ ] Error messages display using `field().errors()`
-- [ ] Form state uses `form().valid()`, `form().dirty()`, etc.
+- [ ] `ReactiveFormsModule` removed, `FormField` and `FormRoot` imported
+- [ ] Password stays a `FormControl` inside the model signal
+- [ ] `compatForm()` with rules for all migrated fields
+- [ ] `addressSchema` applied with `apply()`, phone rules with `applyEach()`
+- [ ] Password match implemented with `validate()` + `valueOf(path.password)`
+- [ ] Phone numbers iterate over `registrationForm.phoneNumbers`
+- [ ] Submission uses `extractValue()`
 
 <details>
 <summary>Migration Cheat Sheet</summary>
 
-| Reactive Forms | Signal Forms |
-|----------------|--------------|
-| `ReactiveFormsModule` | `FormField` |
-| `FormBuilder` | `form()` function + `signal()` |
-| `FormGroup` | Plain signal object |
-| `FormArray` | Array in signal + `update()` |
-| `formControlName="x"` | `[formField]="form.x"` |
-| `formGroupName="x"` | Direct access: `form.x.child` |
-| `[formGroupName]="i"` (array) | `form.array[i].field` |
-| `Validators.required` | `required(schema.field, { message })` |
-| `Validators.email` | `email(schema.field, { message })` |
-| `Validators.minLength(n)` | `minLength(schema.field, n, { message })` |
-| `Validators.pattern(r)` | `pattern(schema.field, r, { message })` |
-| `Validators.min(n)` | `min(schema.field, n, { message })` |
-| `Validators.max(n)` | `max(schema.field, n, { message })` |
-| Custom validator | `computed()` signal |
-| Group validator | `computed()` comparing fields |
-| `Validators.requiredTrue` | `computed(() => value === true)` |
-| `formArray.push()` | `signal.update()` with spread |
-| `formArray.removeAt(i)` | `signal.update()` with filter |
-| `control.errors['key']` | `form.field().errors()` |
-| `form.valid` | `form().valid()` |
-| `form.markAllAsTouched()` | `submit()` handles this |
-
-</details>
-
-<details>
-<summary>Key Differences</summary>
-
-### 1. No More FormBuilder
-
-Signal Forms use plain TypeScript objects in signals instead of FormBuilder.
-
-### 2. Validation Schema
-
-Built-in validators (`required`, `email`, `minLength`, `pattern`) are defined declaratively in the `form()` function's schema callback.
-
-### 3. Complex Validation with Computed Signals
-
-For validation logic not covered by built-in validators (custom rules, cross-field comparisons), use `computed()` signals. This keeps the logic reactive and separate from the form schema.
-
-### 4. Array Handling
-
-Instead of `FormArray.push()` and `removeAt()`, you update the signal directly using `signal.update()`.
-
-### 5. Template Binding
-
-Use `[formField]="form.path.to.field"` instead of nested `formGroupName` directives.
+| Reactive Forms                        | Signal Forms                                                 |
+| ------------------------------------- | ------------------------------------------------------------ |
+| `ReactiveFormsModule`                 | `FormField`, `FormRoot`                                      |
+| `FormBuilder` / `FormGroup`           | `signal()` + `form()` (or `compatForm()` during migration)   |
+| `FormArray`                           | Array in the model + `applyEach()`                           |
+| `formControlName="x"`                 | `[formField]="form.x"`                                       |
+| `formGroupName="x"`                   | `form.x.child`                                               |
+| `[formGroupName]="i"`                 | `@for (item of form.items; track item)`                      |
+| `Validators.required`                 | `required(path.field, { message })`                          |
+| `Validators.requiredTrue`             | `required(path.checkbox)`                                    |
+| `Validators.pattern(r)`               | `pattern(path.field, r, { message })`                        |
+| Custom `ValidatorFn`                  | `validate(path.field, (ctx) => ...)`                         |
+| Group validator                       | `validate()` + `ctx.valueOf(path.other)` or `validateTree()` |
+| `formArray.push()` / `removeAt(i)`    | `model.update()` with spread / filter                        |
+| `control.errors['key']`               | `form.field().errors()` / `getError('key')`                  |
+| `form.markAllAsTouched()`             | handled by the submission (`onInvalid`)                      |
+| Kept `FormControl` inside the model   | `compatForm()`, `extractValue()`                             |
+| Kept `FormGroup` around signal fields | `SignalFormControl`                                          |
 
 </details>
 
 <details>
 <summary>Solution Files</summary>
 
-See the complete solution in:
-
-- `signal-forms-workshop/exercises/02-reactive-to-signal-form/solution/reactive-to-signal-form.ts` (utilities & cheat sheet)
-- `signal-forms-workshop/exercises/02-reactive-to-signal-form/solution/reactive-form-solution.component.ts`
-- `signal-forms-workshop/exercises/02-reactive-to-signal-form/solution/reactive-form-solution.component.html`
-- `signal-forms-workshop/exercises/02-reactive-to-signal-form/solution/reactive-form-solution.component.scss`
-- `signal-forms-workshop/exercises/02-reactive-to-signal-form/solution/example-component.ts` (inline example)
+- `exercises/02-reactive-to-signal-form/solution/reactive-form-solution.component.ts`
+- `exercises/02-reactive-to-signal-form/solution/reactive-form-solution.component.html`
+- `exercises/02-reactive-to-signal-form/solution/address.schema.ts`
+- Running: `http://localhost:4200/solutions/reactive-form`
 
 </details>

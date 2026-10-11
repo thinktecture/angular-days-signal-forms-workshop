@@ -1,195 +1,143 @@
-<div class="form-container">
-  <h1>User Profile - Async Validation</h1>
-  <p class="description">
-    This Reactive Form demonstrates async validation with debouncing.
-    Your task: Convert this to Signal Forms using <code>asyncValidator</code> and <code>debounce</code>.
-  </p>
+<mat-card class="form-container">
+  <mat-card-header>
+    <mat-card-title>User Profile (Exercise)</mat-card-title>
+    <mat-card-subtitle>
+      Add async validation with <code>validateHttp()</code> / <code>validateAsync()</code> and show
+      the <code>pending()</code> state.
+    </mat-card-subtitle>
+  </mat-card-header>
 
-  <div class="info-box">
-    <strong>Test Values:</strong>
-    <ul>
-      <li><strong>Taken usernames:</strong> taken, admin, user, test, demo</li>
-      <li><strong>Taken emails:</strong> test&#64;example.com, admin&#64;example.com, user&#64;example.com</li>
-      <li><strong>Valid promo codes:</strong> SAVE10, SAVE20, WELCOME, VIP50</li>
-    </ul>
-  </div>
+  <mat-card-content>
+    <form [formRoot]="profileForm">
+      <section class="form-section">
+        <h3>Account Information</h3>
 
-  <form [formGroup]="profileForm" (ngSubmit)="onSubmit()">
-    <!-- Username with async validation -->
-    <fieldset>
-      <legend>Account</legend>
+        <!-- Username -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Username</mat-label>
+          <input matInput type="text" [formField]="profileForm.username" />
+          <!-- TODO 5: Show a spinner while profileForm.username().pending() and
+                       "Available" when the field is valid -->
+          <mat-hint>Taken: taken, admin, user, test, demo</mat-hint>
+          @if (profileForm.username().touched() && profileForm.username().invalid()) {
+            @for (error of profileForm.username().errors(); track error.kind) {
+              <mat-error>{{ error.message }}</mat-error>
+            }
+          }
+        </mat-form-field>
 
-      <div class="form-field">
-        <label for="username">Username *</label>
-        <div class="input-with-status">
+        <!-- Email -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Email</mat-label>
+          <input matInput type="email" [formField]="profileForm.email" />
+          <!-- TODO 5: pending() indicator -->
+          <mat-hint
+            >Registered: test&#64;example.com, admin&#64;example.com, user&#64;example.com</mat-hint
+          >
+          @if (profileForm.email().touched() && profileForm.email().invalid()) {
+            @for (error of profileForm.email().errors(); track error.kind) {
+              <mat-error>{{ error.message }}</mat-error>
+            }
+          }
+        </mat-form-field>
+      </section>
+
+      <!-- Promo Code (bonus) -->
+      <section class="form-section">
+        <h3>Promo Code (Optional)</h3>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Promo Code</mat-label>
           <input
+            matInput
             type="text"
-            id="username"
-            formControlName="username"
-            [class.checking]="isPending('username')"
-            [class.valid-async]="usernameStatus() === 'available'"
-            [class.invalid-async]="usernameStatus() === 'taken'"
+            [formField]="profileForm.promoCode"
+            placeholder="e.g., SAVE10"
           />
-          <span class="status-indicator">
-            @switch (usernameStatus()) {
-              @case ('checking') {
-                <span class="spinner"></span>
-                <span class="status-text checking">Checking...</span>
-              }
-              @case ('available') {
-                <span class="status-icon available">✓</span>
-                <span class="status-text available">Available</span>
-              }
-              @case ('taken') {
-                <span class="status-icon taken">✗</span>
-                <span class="status-text taken">Taken</span>
-              }
+          <mat-hint>Valid codes: SAVE10, SAVE20, WELCOME, VIP50</mat-hint>
+          @if (profileForm.promoCode().touched() && profileForm.promoCode().invalid()) {
+            @for (error of profileForm.promoCode().errors(); track error.kind) {
+              <mat-error>{{ error.message }}</mat-error>
             }
-          </span>
-        </div>
-        @if (hasError('username') && !isPending('username')) {
-          <span class="error">{{ getErrorMessage('username') }}</span>
-        }
-        <span class="hint">3+ characters, letters, numbers, and underscores only</span>
-      </div>
+          }
+        </mat-form-field>
+      </section>
 
-      <div class="form-field">
-        <label for="email">Email *</label>
-        <div class="input-with-status">
-          <input
-            type="email"
-            id="email"
-            formControlName="email"
-            [class.checking]="isPending('email')"
-            [class.valid-async]="emailStatus() === 'available'"
-            [class.invalid-async]="emailStatus() === 'taken'"
-          />
-          <span class="status-indicator">
-            @switch (emailStatus()) {
-              @case ('checking') {
-                <span class="spinner"></span>
-                <span class="status-text checking">Checking...</span>
-              }
-              @case ('available') {
-                <span class="status-icon available">✓</span>
-                <span class="status-text available">Available</span>
-              }
-              @case ('taken') {
-                <span class="status-icon taken">✗</span>
-                <span class="status-text taken">Already registered</span>
-              }
+      <!-- Profile Details (sync only) -->
+      <section class="form-section">
+        <h3>Profile Details</h3>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Display Name</mat-label>
+          <input matInput type="text" [formField]="profileForm.displayName" />
+          @if (profileForm.displayName().touched() && profileForm.displayName().invalid()) {
+            @for (error of profileForm.displayName().errors(); track error.kind) {
+              <mat-error>{{ error.message }}</mat-error>
             }
-          </span>
-        </div>
-        @if (hasError('email') && !isPending('email')) {
-          <span class="error">{{ getErrorMessage('email') }}</span>
-        }
-      </div>
-    </fieldset>
+          }
+        </mat-form-field>
 
-    <!-- Profile Info -->
-    <fieldset>
-      <legend>Profile</legend>
-
-      <div class="form-field">
-        <label for="displayName">Display Name *</label>
-        <input type="text" id="displayName" formControlName="displayName" />
-        @if (hasError('displayName')) {
-          <span class="error">{{ getErrorMessage('displayName') }}</span>
-        }
-      </div>
-
-      <div class="form-field">
-        <label for="bio">Bio</label>
-        <textarea
-          id="bio"
-          formControlName="bio"
-          rows="4"
-          placeholder="Tell us about yourself..."
-        ></textarea>
-        <div class="char-count" [class.warning]="bioCharCount() > 450" [class.error]="bioCharCount() > 500">
-          {{ bioCharCount() }} / 500 characters
-          <span class="word-count">({{ bioWordCount() }} words)</span>
-        </div>
-        @if (hasError('bio')) {
-          <span class="error">{{ getErrorMessage('bio') }}</span>
-        }
-      </div>
-    </fieldset>
-
-    <!-- Promo Code with async validation -->
-    <fieldset>
-      <legend>Promo Code (Optional)</legend>
-
-      <div class="form-field">
-        <label for="promoCode">Promo Code</label>
-        <div class="input-with-status">
-          <input
-            type="text"
-            id="promoCode"
-            formControlName="promoCode"
-            placeholder="Enter code..."
-            [class.checking]="isPending('promoCode')"
-            [class.valid-async]="promoCodeStatus() === 'valid'"
-            [class.invalid-async]="promoCodeStatus() === 'invalid'"
-          />
-          <span class="status-indicator">
-            @switch (promoCodeStatus()) {
-              @case ('checking') {
-                <span class="spinner"></span>
-                <span class="status-text checking">Validating...</span>
-              }
-              @case ('valid') {
-                <span class="status-icon available">✓</span>
-                <span class="status-text available">{{ promoDiscount() }}% discount applied!</span>
-              }
-              @case ('invalid') {
-                <span class="status-icon taken">✗</span>
-                <span class="status-text taken">Invalid code</span>
-              }
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Bio</mat-label>
+          <textarea
+            matInput
+            [formField]="profileForm.bio"
+            rows="4"
+            placeholder="Tell us about yourself..."
+          ></textarea>
+          <mat-hint>
+            <span [class.warning]="bioCharCount() > 450"
+              >{{ bioCharCount() }} / 500 characters</span
+            >
+            <span class="word-count">({{ bioWordCount() }} words)</span>
+          </mat-hint>
+          @if (profileForm.bio().touched() && profileForm.bio().invalid()) {
+            @for (error of profileForm.bio().errors(); track error.kind) {
+              <mat-error>{{ error.message }}</mat-error>
             }
-          </span>
-        </div>
-        @if (hasError('promoCode') && !isPending('promoCode')) {
-          <span class="error">{{ getErrorMessage('promoCode') }}</span>
-        }
+          }
+        </mat-form-field>
+      </section>
+
+      <!-- Form Actions -->
+      <div class="form-actions">
+        <!-- TODO 5: show "Validating..." while profileForm().pending() -->
+        <button mat-flat-button type="submit" [disabled]="profileForm().submitting()">
+          @if (profileForm().submitting()) {
+            <mat-spinner diameter="20" />
+            Saving...
+          } @else {
+            Save Profile
+          }
+        </button>
+        <button mat-stroked-button type="button" (click)="onReset()">Reset</button>
       </div>
-    </fieldset>
 
-    <!-- Form Actions -->
-    <div class="form-actions">
-      <button type="submit" [disabled]="profileForm.invalid || profileForm.pending">
-        @if (profileForm.pending) {
-          Validating...
-        } @else {
-          Save Profile
-        }
-      </button>
-      <button type="button" (click)="onReset()">Reset</button>
-    </div>
+      <!-- Debug Info -->
+      <mat-card class="debug-info" appearance="outlined">
+        <mat-card-header>
+          <mat-card-title>Form State (Debug)</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <p><strong>Valid:</strong> {{ profileForm().valid() }}</p>
+          <p><strong>Invalid:</strong> {{ profileForm().invalid() }}</p>
+          <p><strong>Pending:</strong> {{ profileForm().pending() }}</p>
+          <p><strong>Dirty:</strong> {{ profileForm().dirty() }}</p>
+          <h4>Form Value</h4>
+          <pre>{{ formModel() | json }}</pre>
+        </mat-card-content>
+      </mat-card>
+    </form>
+  </mat-card-content>
+</mat-card>
 
-    <!-- Debug Info -->
-    <div class="debug-info">
-      <h3>Form State (Debug)</h3>
-      <p><strong>Valid:</strong> {{ profileForm.valid }}</p>
-      <p><strong>Pending:</strong> {{ profileForm.pending }}</p>
-      <p><strong>Status:</strong> {{ profileForm.status }}</p>
-      <h3>Async Validation Status</h3>
-      <p><strong>Username:</strong> {{ usernameStatus() }}</p>
-      <p><strong>Email:</strong> {{ emailStatus() }}</p>
-      <p><strong>Promo Code:</strong> {{ promoCodeStatus() }} @if (promoDiscount()) { ({{ promoDiscount() }}% off) }</p>
-      <h3>Form Value</h3>
-      <pre>{{ profileForm.value | json }}</pre>
-    </div>
-  </form>
-
-  @if (submitted) {
-    <div class="success-message">
-      <h3>Profile Saved!</h3>
-      @if (promoDiscount()) {
-        <p class="discount-applied">🎉 {{ promoDiscount() }}% discount applied to your account!</p>
-      }
-      <pre>{{ submittedData | json }}</pre>
-    </div>
-  }
-</div>
+@if (submittedData(); as data) {
+  <mat-card class="success-message">
+    <mat-card-header>
+      <mat-card-title>Profile Saved!</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <pre>{{ data | json }}</pre>
+    </mat-card-content>
+  </mat-card>
+}

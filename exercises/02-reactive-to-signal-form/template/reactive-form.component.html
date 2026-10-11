@@ -1,19 +1,6 @@
-<!-- Exercise 02: Reactive Form → Signal Forms -->
-<!-- This is the starting point. Migrate this template to use Signal Forms. -->
-<!--
-  Key changes:
-  1. Replace [formGroup]="registrationForm" - not needed with Signal Forms
-  2. Replace formControlName="field" with [formField]="form.field"
-  3. Replace formGroupName="address" with direct access: form.address.field
-  4. Replace FormArray iteration with signal array iteration
-  5. Replace hasError() helper with form.field().invalid() && form.field().touched()
-  6. Replace getErrorMessage() with form.field().errors()[0]?.message
-  7. Replace registrationForm.valid with isFormValid() (computed signal)
--->
-
 <mat-card class="form-container">
   <mat-card-header>
-    <mat-card-title>Reactive Form - Registration (Exercise)</mat-card-title>
+    <mat-card-title>Reactive Form - Registration</mat-card-title>
     <mat-card-subtitle>
       This is a classic Angular Reactive Form with nested objects, FormArray, and custom validators.
       Your task: Convert this to the new Signal Forms API.
@@ -21,29 +8,18 @@
   </mat-card-header>
 
   <mat-card-content>
-    <!-- TODO: Remove [formGroup] - Signal Forms don't need it -->
     <form [formGroup]="registrationForm" (ngSubmit)="onSubmit()">
       <!-- Personal Info Section -->
       <section class="form-section">
         <h3>Personal Information</h3>
 
         <div class="form-row">
-          <!-- TODO: Replace formControlName with [formField] -->
-          <!-- BEFORE: formControlName="firstName" -->
-          <!-- AFTER:  [formField]="registrationForm.firstName" -->
           <mat-form-field appearance="outline">
             <mat-label>First Name</mat-label>
             <input matInput type="text" formControlName="firstName" />
             @if (hasError('firstName')) {
               <mat-error>{{ getErrorMessage('firstName') }}</mat-error>
             }
-            <!-- AFTER:
-            @if (registrationForm.firstName().invalid() && registrationForm.firstName().touched()) {
-              @for (error of registrationForm.firstName().errors(); track error.message) {
-                <mat-error>{{ error.message }}</mat-error>
-              }
-            }
-            -->
           </mat-form-field>
 
           <mat-form-field appearance="outline">
@@ -74,12 +50,6 @@
           @if (hasError('password')) {
             <mat-error>{{ getErrorMessage('password') }}</mat-error>
           }
-          <!-- TODO: Add password strength feedback using computed signal -->
-          <!-- @if (formModel().password && !passwordStrength().valid) {
-            <mat-hint class="password-hint">
-              Password must contain: {{ passwordStrength().errors.join(', ') }}
-            </mat-hint>
-          } -->
         </mat-form-field>
 
         <mat-form-field appearance="outline" class="full-width">
@@ -88,22 +58,16 @@
           @if (hasError('confirmPassword')) {
             <mat-error>{{ getErrorMessage('confirmPassword') }}</mat-error>
           }
-          <!-- Cross-field validation -->
-          @if (registrationForm.errors?.['passwordMismatch'] && registrationForm.get('confirmPassword')?.touched) {
+          @if (
+            registrationForm.errors?.['passwordMismatch'] &&
+            registrationForm.get('confirmPassword')?.touched
+          ) {
             <mat-error>Passwords do not match</mat-error>
           }
-          <!-- TODO: Replace with computed signal
-          @if (!passwordsMatch() && registrationForm.confirmPassword().touched()) {
-            <mat-error>Passwords do not match</mat-error>
-          }
-          -->
         </mat-form-field>
       </section>
 
       <!-- Address Section (Nested Object) -->
-      <!-- TODO: Remove formGroupName - access nested fields directly -->
-      <!-- BEFORE: formGroupName="address" -->
-      <!-- AFTER:  Direct access via registrationForm.address.* -->
       <section class="form-section" formGroupName="address">
         <h3>Address</h3>
 
@@ -148,9 +112,6 @@
       </section>
 
       <!-- Phone Numbers Section (FormArray) -->
-      <!-- TODO: Replace FormArray iteration with signal array -->
-      <!-- BEFORE: @for (phone of phoneNumbers.controls; ...) with [formGroupName] -->
-      <!-- AFTER:  @for (phone of formModel().phoneNumbers; ...) with [formField] -->
       <section class="form-section">
         <h3>Phone Numbers</h3>
 
@@ -202,30 +163,17 @@
         @if (hasError('acceptTerms')) {
           <mat-error class="checkbox-error">You must accept the terms</mat-error>
         }
-        <!-- TODO: Replace with computed signal
-        @if (!termsAccepted() && registrationForm.acceptTerms().touched()) {
-          <mat-error class="checkbox-error">You must accept the terms</mat-error>
-        }
-        -->
       </section>
 
       <!-- Form Actions -->
-      <!-- TODO: Update disabled condition to use computed signal -->
-      <!-- BEFORE: [disabled]="registrationForm.invalid" -->
-      <!-- AFTER:  [disabled]="!isFormValid() || registrationForm().submitting()" -->
       <div class="form-actions">
         <button mat-flat-button color="primary" type="submit" [disabled]="registrationForm.invalid">
           Register
         </button>
-        <button mat-stroked-button type="button" (click)="onReset()">
-          Reset
-        </button>
+        <button mat-stroked-button type="button" (click)="onReset()">Reset</button>
       </div>
 
       <!-- Debug Info -->
-      <!-- TODO: Update state access to use signals -->
-      <!-- BEFORE: registrationForm.valid, registrationForm.dirty, registrationForm.value -->
-      <!-- AFTER:  registrationForm().valid(), registrationForm().dirty(), formModel() -->
       <mat-card class="debug-info" appearance="outlined">
         <mat-card-header>
           <mat-card-title>Form State (Debug)</mat-card-title>

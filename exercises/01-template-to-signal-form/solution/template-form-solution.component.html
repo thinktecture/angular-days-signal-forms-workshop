@@ -4,45 +4,43 @@
   </mat-card-header>
   <mat-card-content>
     <p class="description">
-      This is the migrated version using Angular Signal Forms API. Compare with the original
+      This is the migrated version using the Angular Signal Forms API. Compare it with the original
       Template-Driven Form to see the differences.
     </p>
 
-    <form (ngSubmit)="onSubmit()">
+    <!-- BEFORE: <form #userForm="ngForm" (ngSubmit)="onSubmit()"> -->
+    <!-- AFTER:  [formRoot] sets novalidate, prevents the default and calls the submission action -->
+    <form [formRoot]="userForm">
       <!-- Name Field -->
       <!-- BEFORE: [(ngModel)]="formData.name" #nameInput="ngModel" required minlength="2" -->
-      <!-- AFTER:  [formField]="userForm.name" -->
+      <!-- AFTER:  [formField]="userForm.name" - the rules live in the schema -->
       <mat-form-field appearance="outline">
         <mat-label>Name</mat-label>
         <input matInput type="text" id="name" [formField]="userForm.name" />
-        @if (userForm.name().invalid() && userForm.name().touched()) {
-          @for (error of userForm.name().errors(); track error.message) {
+        @if (userForm.name().touched() && userForm.name().invalid()) {
+          @for (error of userForm.name().errors(); track error.kind) {
             <mat-error>{{ error.message }}</mat-error>
           }
         }
       </mat-form-field>
 
       <!-- Email Field -->
-      <!-- BEFORE: [(ngModel)]="formData.email" #emailInput="ngModel" required email -->
-      <!-- AFTER:  [formField]="userForm.email" -->
       <mat-form-field appearance="outline">
         <mat-label>Email</mat-label>
         <input matInput type="email" id="email" [formField]="userForm.email" />
-        @if (userForm.email().invalid() && userForm.email().touched()) {
-          @for (error of userForm.email().errors(); track error.message) {
+        @if (userForm.email().touched() && userForm.email().invalid()) {
+          @for (error of userForm.email().errors(); track error.kind) {
             <mat-error>{{ error.message }}</mat-error>
           }
         }
       </mat-form-field>
 
       <!-- Age Field -->
-      <!-- BEFORE: [(ngModel)]="formData.age" #ageInput="ngModel" min="0" max="120" -->
-      <!-- AFTER:  [formField]="userForm.age" -->
       <mat-form-field appearance="outline">
         <mat-label>Age</mat-label>
         <input matInput type="number" id="age" [formField]="userForm.age" />
-        @if (userForm.age().invalid() && userForm.age().touched()) {
-          @for (error of userForm.age().errors(); track error.message) {
+        @if (userForm.age().touched() && userForm.age().invalid()) {
+          @for (error of userForm.age().errors(); track error.kind) {
             <mat-error>{{ error.message }}</mat-error>
           }
         }
@@ -51,19 +49,15 @@
       <!-- Newsletter Checkbox -->
       <!-- BEFORE: [(ngModel)]="formData.newsletter" -->
       <!-- AFTER:  [formField]="userForm.newsletter" -->
-      <mat-checkbox [formField]="userForm.newsletter"> Subscribe to newsletter </mat-checkbox>
+      <mat-checkbox [formField]="userForm.newsletter">Subscribe to newsletter</mat-checkbox>
 
       <!-- Form Actions -->
-      <!-- Using submit() function: automatically handles submitting state and validation -->
+      <!-- The button is NOT disabled while invalid: submitting an invalid form runs onInvalid,
+           marks all fields as touched and focuses the first error. -->
       <div class="form-actions">
-        <button
-          mat-flat-button
-          color="primary"
-          type="submit"
-          [disabled]="!isFormValid() || userForm().submitting()"
-        >
+        <button mat-flat-button type="submit" [disabled]="userForm().submitting()">
           @if (userForm().submitting()) {
-            <mat-spinner diameter="20"></mat-spinner>
+            <mat-spinner diameter="20" />
             Submitting...
           } @else {
             Submit
@@ -79,37 +73,30 @@
         </button>
       </div>
 
-      <!-- Processing Error Display -->
-      @if (userForm().processingError(); as error) {
-        <mat-card class="error-banner" appearance="outlined">
-          <mat-card-content> <strong>Error:</strong> {{ error }} </mat-card-content>
-        </mat-card>
-      }
-
       <!-- Debug Info -->
-      <!-- Signal Forms provides reactive state: valid, dirty, touched, submitting -->
+      <!-- The root field offers the same state signals as every other field -->
       <mat-card class="debug-info" appearance="outlined">
         <mat-card-header>
           <mat-card-title>Form State (Debug)</mat-card-title>
         </mat-card-header>
         <mat-card-content>
-          <p><strong>Valid:</strong> {{ isFormValid() }}</p>
-          <p><strong>Dirty:</strong> {{ isFormDirty() }}</p>
-          <p><strong>Touched:</strong> {{ isFormTouched() }}</p>
+          <p><strong>Valid:</strong> {{ userForm().valid() }}</p>
+          <p><strong>Dirty:</strong> {{ userForm().dirty() }}</p>
+          <p><strong>Touched:</strong> {{ userForm().touched() }}</p>
           <p><strong>Submitting:</strong> {{ userForm().submitting() }}</p>
-          <h4>Form Value (Signal)</h4>
+          <h4>Form Value (Model Signal)</h4>
           <pre>{{ formModel() | json }}</pre>
         </mat-card-content>
       </mat-card>
     </form>
 
-    @if (submitted()) {
+    @if (submittedData(); as data) {
       <mat-card class="success-message" appearance="outlined">
         <mat-card-header>
           <mat-card-title>Form Submitted Successfully!</mat-card-title>
         </mat-card-header>
         <mat-card-content>
-          <pre>{{ submittedData() | json }}</pre>
+          <pre>{{ data | json }}</pre>
         </mat-card-content>
       </mat-card>
     }

@@ -1,5 +1,5 @@
 // This component is used in Exercise 01
-// Files: signal-forms-workshop/exercises/01-template-to-signal-form/*
+// Exercise files: exercises/01-template-to-signal-form/
 
 import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
@@ -9,7 +9,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatCardModule } from '@angular/material/card';
-import { TemplateToSignalFormModel } from '../../models/forms.models';
+import { TemplateToSignalFormModel } from '@app/models/forms.models';
 
 @Component({
   selector: 'app-template-form',
@@ -28,7 +28,7 @@ import { TemplateToSignalFormModel } from '../../models/forms.models';
 })
 export class TemplateFormComponent {
   // Exercise 01: Convert this template-driven form to Signal Forms
-  // See: signal-forms-workshop/exercises/01-template-to-signal-form/README.md
+  // See: exercises/01-template-to-signal-form/README.md
 
   formData: TemplateToSignalFormModel = {
     name: '',

@@ -2,13 +2,14 @@
   <mat-card-header>
     <mat-card-title>Signal Forms - Registration (Solution)</mat-card-title>
     <mat-card-subtitle>
-      This is the migrated version using Angular Signal Forms API.
-      Compare with the original Reactive Form to see the differences.
+      Partial migration with <code>compatForm()</code>: the password control is still a
+      <code>FormControl</code>, everything else uses Signal Forms rules.
     </mat-card-subtitle>
   </mat-card-header>
 
   <mat-card-content>
-    <form (ngSubmit)="onSubmit()">
+    <!-- BEFORE: <form [formGroup]="registrationForm" (ngSubmit)="onSubmit()"> -->
+    <form [formRoot]="registrationForm">
       <!-- Personal Info Section -->
       <section class="form-section">
         <h3>Personal Information</h3>
@@ -19,8 +20,8 @@
           <mat-form-field appearance="outline">
             <mat-label>First Name</mat-label>
             <input matInput type="text" [formField]="registrationForm.firstName" />
-            @if (registrationForm.firstName().invalid() && registrationForm.firstName().touched()) {
-              @for (error of registrationForm.firstName().errors(); track error.message) {
+            @if (registrationForm.firstName().touched() && registrationForm.firstName().invalid()) {
+              @for (error of registrationForm.firstName().errors(); track error.kind) {
                 <mat-error>{{ error.message }}</mat-error>
               }
             }
@@ -29,8 +30,8 @@
           <mat-form-field appearance="outline">
             <mat-label>Last Name</mat-label>
             <input matInput type="text" [formField]="registrationForm.lastName" />
-            @if (registrationForm.lastName().invalid() && registrationForm.lastName().touched()) {
-              @for (error of registrationForm.lastName().errors(); track error.message) {
+            @if (registrationForm.lastName().touched() && registrationForm.lastName().invalid()) {
+              @for (error of registrationForm.lastName().errors(); track error.kind) {
                 <mat-error>{{ error.message }}</mat-error>
               }
             }
@@ -40,8 +41,8 @@
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Email</mat-label>
           <input matInput type="email" [formField]="registrationForm.email" />
-          @if (registrationForm.email().invalid() && registrationForm.email().touched()) {
-            @for (error of registrationForm.email().errors(); track error.message) {
+          @if (registrationForm.email().touched() && registrationForm.email().invalid()) {
+            @for (error of registrationForm.email().errors(); track error.kind) {
               <mat-error>{{ error.message }}</mat-error>
             }
           }
@@ -52,48 +53,47 @@
       <section class="form-section">
         <h3>Password</h3>
 
+        <!-- The password is still a FormControl, but it is bound like any other field. -->
+        <!-- Its errors are CompatValidationErrors without a message, so we map them. -->
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Password</mat-label>
           <input matInput type="password" [formField]="registrationForm.password" />
-          @if (registrationForm.password().invalid() && registrationForm.password().touched()) {
-            @for (error of registrationForm.password().errors(); track error.message) {
-              <mat-error>{{ error.message }}</mat-error>
+          @if (registrationForm.password().touched() && registrationForm.password().invalid()) {
+            @for (error of registrationForm.password().errors(); track error.kind) {
+              <mat-error>{{ passwordErrorMessage(error) }}</mat-error>
             }
-          }
-          <!-- Password strength feedback (computed signal) -->
-          @if (formModel().password && !passwordStrength().valid) {
-            <mat-hint class="password-hint">
-              Password must contain: {{ passwordStrength().errors.join(', ') }}
-            </mat-hint>
           }
         </mat-form-field>
 
+        <!-- Cross-field rule lives in the schema (validate() on confirmPassword) -->
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Confirm Password</mat-label>
           <input matInput type="password" [formField]="registrationForm.confirmPassword" />
-          @if (registrationForm.confirmPassword().invalid() && registrationForm.confirmPassword().touched()) {
-            @for (error of registrationForm.confirmPassword().errors(); track error.message) {
+          @if (
+            registrationForm.confirmPassword().touched() &&
+            registrationForm.confirmPassword().invalid()
+          ) {
+            @for (error of registrationForm.confirmPassword().errors(); track error.kind) {
               <mat-error>{{ error.message }}</mat-error>
             }
-          }
-          <!-- Cross-field validation: password match (computed signal) -->
-          @if (!passwordsMatch() && registrationForm.confirmPassword().touched()) {
-            <mat-error>Passwords do not match</mat-error>
           }
         </mat-form-field>
       </section>
 
       <!-- Address Section (Nested Object) -->
-      <!-- BEFORE: formGroupName="address" -->
-      <!-- AFTER:  Direct access via registrationForm.address.* -->
+      <!-- BEFORE: formGroupName="address" + formControlName="street" -->
+      <!-- AFTER:  registrationForm.address.street - the FieldTree mirrors the model -->
       <section class="form-section">
         <h3>Address</h3>
 
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Street</mat-label>
           <input matInput type="text" [formField]="registrationForm.address.street" />
-          @if (registrationForm.address.street().invalid() && registrationForm.address.street().touched()) {
-            @for (error of registrationForm.address.street().errors(); track error.message) {
+          @if (
+            registrationForm.address.street().touched() &&
+            registrationForm.address.street().invalid()
+          ) {
+            @for (error of registrationForm.address.street().errors(); track error.kind) {
               <mat-error>{{ error.message }}</mat-error>
             }
           }
@@ -102,9 +102,17 @@
         <div class="form-row">
           <mat-form-field appearance="outline">
             <mat-label>Postal Code</mat-label>
-            <input matInput type="text" [formField]="registrationForm.address.postalCode" placeholder="12345" />
-            @if (registrationForm.address.postalCode().invalid() && registrationForm.address.postalCode().touched()) {
-              @for (error of registrationForm.address.postalCode().errors(); track error.message) {
+            <input
+              matInput
+              type="text"
+              [formField]="registrationForm.address.postalCode"
+              placeholder="12345"
+            />
+            @if (
+              registrationForm.address.postalCode().touched() &&
+              registrationForm.address.postalCode().invalid()
+            ) {
+              @for (error of registrationForm.address.postalCode().errors(); track error.kind) {
                 <mat-error>{{ error.message }}</mat-error>
               }
             }
@@ -113,8 +121,10 @@
           <mat-form-field appearance="outline">
             <mat-label>City</mat-label>
             <input matInput type="text" [formField]="registrationForm.address.city" />
-            @if (registrationForm.address.city().invalid() && registrationForm.address.city().touched()) {
-              @for (error of registrationForm.address.city().errors(); track error.message) {
+            @if (
+              registrationForm.address.city().touched() && registrationForm.address.city().invalid()
+            ) {
+              @for (error of registrationForm.address.city().errors(); track error.kind) {
                 <mat-error>{{ error.message }}</mat-error>
               }
             }
@@ -129,8 +139,11 @@
               <mat-option [value]="country">{{ country }}</mat-option>
             }
           </mat-select>
-          @if (registrationForm.address.country().invalid() && registrationForm.address.country().touched()) {
-            @for (error of registrationForm.address.country().errors(); track error.message) {
+          @if (
+            registrationForm.address.country().touched() &&
+            registrationForm.address.country().invalid()
+          ) {
+            @for (error of registrationForm.address.country().errors(); track error.kind) {
               <mat-error>{{ error.message }}</mat-error>
             }
           }
@@ -138,17 +151,17 @@
       </section>
 
       <!-- Phone Numbers Section (Array) -->
-      <!-- BEFORE: *ngFor with [formGroupName]="i" and formControlName -->
-      <!-- AFTER:  @for with registrationForm.phoneNumbers[i].* -->
+      <!-- BEFORE: @for (phone of phoneNumbers.controls) with [formGroupName]="i" -->
+      <!-- AFTER:  iterate the FieldTree itself, track by field identity -->
       <section class="form-section">
         <h3>Phone Numbers</h3>
 
-        @for (phone of formModel().phoneNumbers; track $index; let i = $index) {
+        @for (phone of registrationForm.phoneNumbers; track phone; let i = $index) {
           <div class="phone-entry">
             <div class="phone-row">
               <mat-form-field appearance="outline" class="type-field">
                 <mat-label>Type</mat-label>
-                <mat-select [formField]="registrationForm.phoneNumbers[i].type">
+                <mat-select [formField]="phone.type">
                   @for (type of phoneTypes; track type) {
                     <mat-option [value]="type">{{ type }}</mat-option>
                   }
@@ -160,20 +173,21 @@
                 <input
                   matInput
                   type="tel"
-                  [formField]="registrationForm.phoneNumbers[i].number"
+                  [formField]="phone.number"
                   placeholder="+49 123 456789"
                 />
-                @if (registrationForm.phoneNumbers[i].number().touched() && !isPhoneNumberValid(phone.number)) {
-                  <mat-error>Invalid phone number format</mat-error>
+                @if (phone.number().touched() && phone.number().invalid()) {
+                  @for (error of phone.number().errors(); track error.kind) {
+                    <mat-error>{{ error.message }}</mat-error>
+                  }
                 }
               </mat-form-field>
 
               <button
                 mat-icon-button
-                color="warn"
                 type="button"
                 (click)="removePhoneNumber(i)"
-                [disabled]="formModel().phoneNumbers.length === 1"
+                [disabled]="registrationForm.phoneNumbers.length === 1"
                 aria-label="Remove phone number"
               >
                 <mat-icon>delete</mat-icon>
@@ -182,77 +196,74 @@
           </div>
         }
 
-        <button mat-stroked-button color="primary" type="button" (click)="addPhoneNumber()">
+        <button mat-stroked-button type="button" (click)="addPhoneNumber()">
           <mat-icon>add</mat-icon>
           Add Phone Number
         </button>
       </section>
 
       <!-- Terms -->
+      <!-- BEFORE: Validators.requiredTrue -->
+      <!-- AFTER:  required() - an unchecked checkbox counts as empty -->
       <section class="form-section">
-        <mat-checkbox [formField]="registrationForm.acceptTerms" color="primary">
+        <mat-checkbox [formField]="registrationForm.acceptTerms">
           I accept the terms and conditions *
         </mat-checkbox>
-        @if (!termsAccepted() && registrationForm.acceptTerms().touched()) {
-          <mat-error class="checkbox-error">You must accept the terms</mat-error>
+        @if (registrationForm.acceptTerms().touched() && registrationForm.acceptTerms().invalid()) {
+          @for (error of registrationForm.acceptTerms().errors(); track error.kind) {
+            <mat-error class="checkbox-error">{{ error.message }}</mat-error>
+          }
         }
       </section>
 
       <!-- Form Actions -->
-      <!-- BEFORE: [disabled]="registrationForm.invalid" -->
-      <!-- AFTER:  [disabled]="!isFormValid() || registrationForm().submitting()" -->
       <div class="form-actions">
-        <button mat-flat-button color="primary" type="submit" [disabled]="!isFormValid() || registrationForm().submitting()">
+        <button mat-flat-button type="submit" [disabled]="registrationForm().submitting()">
           @if (registrationForm().submitting()) {
+            <mat-spinner diameter="20" />
             Registering...
           } @else {
             Register
           }
         </button>
-        <button mat-stroked-button type="button" (click)="onReset()" [disabled]="registrationForm().submitting()">
+        <button
+          mat-stroked-button
+          type="button"
+          (click)="onReset()"
+          [disabled]="registrationForm().submitting()"
+        >
           Reset
         </button>
       </div>
 
-      <!-- Processing Error Display -->
-      @if (registrationForm().processingError(); as error) {
-        <mat-card class="error-banner" appearance="outlined">
-          <mat-card-content>
-            <strong>Error:</strong> {{ error }}
-          </mat-card-content>
-        </mat-card>
-      }
-
       <!-- Debug Info -->
-      <!-- BEFORE: registrationForm.valid, registrationForm.dirty, registrationForm.value -->
-      <!-- AFTER:  registrationForm().valid(), registrationForm().dirty(), formModel() -->
       <mat-card class="debug-info" appearance="outlined">
         <mat-card-header>
           <mat-card-title>Form State (Debug)</mat-card-title>
         </mat-card-header>
         <mat-card-content>
           <p><strong>Form Valid:</strong> {{ registrationForm().valid() }}</p>
-          <p><strong>Passwords Match:</strong> {{ passwordsMatch() }}</p>
-          <p><strong>Terms Accepted:</strong> {{ termsAccepted() }}</p>
-          <p><strong>Overall Valid:</strong> {{ isFormValid() }}</p>
+          <p>
+            <strong>Password (FormControl) Valid:</strong> {{ registrationForm.password().valid() }}
+          </p>
           <p><strong>Dirty:</strong> {{ registrationForm().dirty() }}</p>
           <p><strong>Touched:</strong> {{ registrationForm().touched() }}</p>
           <p><strong>Submitting:</strong> {{ registrationForm().submitting() }}</p>
-          <h4>Form Value (Signal)</h4>
-          <pre>{{ formModel() | json }}</pre>
+          <h4>Form Value (Model Signal)</h4>
+          <pre>{{ formValue() | json }}</pre>
         </mat-card-content>
       </mat-card>
     </form>
   </mat-card-content>
 </mat-card>
 
-@if (submitted()) {
+@if (submittedData(); as data) {
   <mat-card class="success-message">
     <mat-card-header>
       <mat-card-title>Registration Successful!</mat-card-title>
     </mat-card-header>
     <mat-card-content>
-      <pre>{{ submittedData() | json }}</pre>
+      <pre>{{ data | json }}</pre>
     </mat-card-content>
   </mat-card>
 }

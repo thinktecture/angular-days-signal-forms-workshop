@@ -58,7 +58,10 @@
           @if (hasError('confirmPassword')) {
             <mat-error>{{ getErrorMessage('confirmPassword') }}</mat-error>
           }
-          @if (registrationForm.errors?.['passwordMismatch'] && registrationForm.get('confirmPassword')?.touched) {
+          @if (
+            registrationForm.errors?.['passwordMismatch'] &&
+            registrationForm.get('confirmPassword')?.touched
+          ) {
             <mat-error>Passwords do not match</mat-error>
           }
         </mat-form-field>
@@ -167,9 +170,7 @@
         <button mat-flat-button color="primary" type="submit" [disabled]="registrationForm.invalid">
           Register
         </button>
-        <button mat-stroked-button type="button" (click)="onReset()">
-          Reset
-        </button>
+        <button mat-stroked-button type="button" (click)="onReset()">Reset</button>
       </div>
 
       <!-- Debug Info -->

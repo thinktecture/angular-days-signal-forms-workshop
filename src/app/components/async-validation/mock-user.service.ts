@@ -12,7 +12,7 @@ export class MockUserService {
     const takenUsernames = ['taken', 'admin', 'user', 'test', 'demo'];
     return timer(800).pipe(
       // Simulate network delay
-      map(() => !takenUsernames.includes(username.toLowerCase()))
+      map(() => !takenUsernames.includes(username.toLowerCase())),
     );
   }
 
@@ -34,7 +34,7 @@ export class MockUserService {
       map(() => {
         const discount = validCodes[code.toUpperCase()];
         return discount ? { valid: true, discount } : { valid: false };
-      })
+      }),
     );
   }
 }

@@ -1,166 +1,238 @@
-# Exercise 05 – Signal Form with Store
+# Exercise 05 – Signal Form with NgRx SignalStore
 
 ## Goals
 
-In this exercise, you will learn how to integrate **Angular Signal Forms** with **NgRx SignalStore** for persistent state management. You'll understand:
+Connect a Signal Form to an NgRx SignalStore without `effect()`, `valueChanges` or `patchValue()`.
 
-- How to create a SignalStore to manage form state
-- How to use `linkedSignal` to sync form data with the store
-- How to implement save/reset functionality with store integration
-- The differences between Reactive Forms and Signal Forms approaches
+Pattern A, "the store delivers the data":
+
+1. The store holds the persisted profile
+2. `linkedSignal()` derives the form model from the store and stays writable for user input
+3. `form()` wraps the model
+4. The submission action writes the model back to the store
+
+The store owns the persisted truth, the form owns the draft. `dirty()` tells you whether there are unsaved changes.
 
 ## Prerequisites
 
 - Completion of Exercises 01-04
-- Basic understanding of NgRx SignalStore
-- Familiarity with Angular Signals
-
-## Use Case: Contact Profile Editor
-
-We're building a contact profile editor that:
-- Loads initial data from a store
-- Tracks unsaved changes
-- Allows saving changes back to the store
-- Supports resetting to the last saved state
+- Basic understanding of NgRx SignalStore (`signalStore`, `withState`, `withMethods`, `patchState`)
 
 ## Setup
 
-1. Navigate to the application at `http://localhost:4200/store-form`
-2. Open the component at `src/app/components/store-form/store-form.component.ts`
-3. Reference the template at `signal-forms-workshop/exercises/05-signal-form-with-store/template/`
+1. Navigate to `http://localhost:4200/store-form`
+2. Open `src/app/components/store-form/`
+3. Compare with the running solution at `http://localhost:4200/solutions/store-form`
 
-## Tasks
+## The Starting Point
 
-### Task 1: Create the SignalStore
-
-Create a SignalStore in `signal-form-store.ts` that manages the contact profile state:
+`contact-profile.store.ts` is complete:
 
 ```typescript
-import { signalStore, withState, withComputed, withMethods, patchState } from '@ngrx/signals';
-
 export const ContactProfileStore = signalStore(
-  withState({
-    profile: { /* ContactProfile */ },
-    savedProfile: { /* ContactProfile */ },
-    loading: false,
-    lastSaved: null as Date | null,
-  }),
-  withComputed((state) => ({
-    fullName: computed(() => `${state.profile().firstName} ${state.profile().lastName}`),
-    hasUnsavedChanges: computed(() =>
-      JSON.stringify(state.profile()) !== JSON.stringify(state.savedProfile())
-    ),
+  withState<ContactProfileState>({ profile: INITIAL_PROFILE, saving: false, lastSaved: null }),
+  withComputed(({ profile }) => ({
+    fullName: computed(() => `${profile().firstName} ${profile().lastName}`),
   })),
   withMethods((store) => ({
-    updateProfile(profile: Partial<ContactProfile>) { /* ... */ },
-    setProfile(profile: ContactProfile) { /* ... */ },
-    saveProfile() { /* ... */ },
-    resetToSaved() { /* ... */ },
-  }))
+    async saveProfile(profile: ContactProfile): Promise<void> {
+      /* simulated PUT */
+    },
+    simulateRemoteUpdate(): void {
+      /* another client changed the data */
+    },
+  })),
 );
 ```
 
-### Task 2: Create the Signal Form with linkedSignal
+The component only injects the store. The `TODO` comments mark what is missing.
 
-Use `linkedSignal` to create a form model that derives from and syncs with the store:
+<details>
+<summary>How this looked with Reactive Forms</summary>
 
 ```typescript
-import { linkedSignal } from '@angular/core';
-import { form, required, email, maxLength, FormField } from '@angular/forms/signals';
+constructor() {
+  // form → store
+  this.profileForm.valueChanges.pipe(takeUntilDestroyed()).subscribe((value) => {
+    this.store.updateProfile(value);
+  });
+  // store → form (guard against the loop)
+  effect(() => {
+    const profile = this.store.profile();
+    if (JSON.stringify(profile) !== JSON.stringify(this.profileForm.getRawValue())) {
+      this.profileForm.patchValue(profile, { emitEvent: false });
+    }
+  });
+}
+```
 
-// linkedSignal creates a writable signal derived from the store
+Two worlds (RxJS and signals), manual bridging in both directions, and an equality check to avoid a loop.
+
+</details>
+
+## Tasks
+
+### Task 1: Imports
+
+<details>
+<summary>Show Solution</summary>
+
+```typescript
+import { ChangeDetectionStrategy, Component, inject, linkedSignal } from '@angular/core';
+import { FormField, FormRoot, email, form, maxLength, required } from '@angular/forms/signals';
+```
+
+Add `FormField` and `FormRoot` to the component `imports`.
+
+</details>
+
+### Task 2: Form Model with linkedSignal()
+
+<details>
+<summary>Show Solution</summary>
+
+```typescript
+// Follows the store (save, reload, remote update), but user input can overwrite it
 readonly profileModel = linkedSignal(() => this.store.profile());
+```
 
-// Create Signal Form with validation
-readonly profileForm = form(this.profileModel, (schema) => {
-  required(schema.firstName, { message: 'First name is required' });
-  required(schema.lastName, { message: 'Last name is required' });
-  required(schema.email, { message: 'Email is required' });
-  email(schema.email, { message: 'Please enter a valid email' });
-  maxLength(schema.bio, 500, { message: 'Bio cannot exceed 500 characters' });
+</details>
+
+### Task 3: The Form
+
+<details>
+<summary>Show Solution</summary>
+
+```typescript
+readonly profileForm = form(this.profileModel, (path) => {
+  required(path.firstName, { message: 'First name is required' });
+  required(path.lastName, { message: 'Last name is required' });
+  required(path.email, { message: 'Email is required' });
+  email(path.email, { message: 'Please enter a valid email' });
+  maxLength(path.bio, 500, { message: 'Bio cannot exceed 500 characters' });
 });
 ```
 
-### Task 3: Sync Form Changes to Store
+</details>
 
-Use an `effect` to sync form model changes back to the store:
+### Task 4: Submission Writes to the Store
+
+<details>
+<summary>Show Solution</summary>
 
 ```typescript
-effect(() => {
-  const formValue = this.profileModel();
-  const storeValue = this.store.profile();
-
-  if (JSON.stringify(formValue) !== JSON.stringify(storeValue)) {
-    this.store.setProfile(formValue);
-  }
+readonly profileForm = form(this.profileModel, schema, {
+  submission: {
+    action: async (field) => {
+      await this.store.saveProfile(field().value());
+      // The store now holds the saved value, linkedSignal already points to it.
+      // Clear dirty/touched without changing the value:
+      field().reset();
+      this.snackBar.open('Profile saved successfully!', 'Close', { duration: 3000 });
+    },
+    onInvalid: (field) => field().errorSummary()[0]?.fieldTree().focusBoundControl(),
+  },
 });
 ```
 
-### Task 4: Implement Save and Reset
+</details>
+
+### Task 5: Reset
+
+<details>
+<summary>Show Solution</summary>
 
 ```typescript
-saveProfile(): void {
-  if (this.profileForm().valid()) {
-    this.store.saveProfile();
-  }
-}
-
 resetForm(): void {
-  this.store.resetToSaved();
-  // linkedSignal automatically updates from store
+  // Back to the persisted value and clear dirty/touched
+  this.profileForm().reset(this.store.profile());
 }
 ```
 
-### Task 5: Bind Form Fields in Template
+</details>
 
-Use the `[formField]` directive to bind inputs:
+### Tasks 6-10: Template
+
+<details>
+<summary>Show Solution</summary>
 
 ```html
-<input matInput [formField]="profileForm.firstName" />
+<form class="profile-form" [formRoot]="profileForm">
+  <mat-form-field appearance="outline">
+    <mat-label>First Name</mat-label>
+    <input matInput [formField]="profileForm.firstName" />
+    @if (profileForm.firstName().touched() && profileForm.firstName().invalid()) { @for (error of
+    profileForm.firstName().errors(); track error.kind) {
+    <mat-error>{{ error.message }}</mat-error>
+    } }
+  </mat-form-field>
+  <!-- ... -->
+  <textarea matInput rows="3" [formField]="profileForm.bio"></textarea>
+  <mat-hint>{{ profileForm.bio().value().length }} / 500</mat-hint>
 
-@if (profileForm.firstName().touched() && profileForm.firstName().invalid()) {
-  <mat-error>{{ profileForm.firstName().errors()[0]?.message }}</mat-error>
-}
+  <button
+    mat-stroked-button
+    type="button"
+    (click)="resetForm()"
+    [disabled]="!profileForm().dirty()"
+  >
+    Reset
+  </button>
+  <button
+    mat-flat-button
+    type="submit"
+    [disabled]="!profileForm().dirty() || profileForm().submitting()"
+  >
+    {{ profileForm().submitting() ? 'Saving...' : 'Save Profile' }}
+  </button>
+</form>
+
+<p><strong>Unsaved Changes:</strong> {{ profileForm().dirty() ? 'Yes' : 'No' }}</p>
 ```
+
+Try "Simulate remote update" while editing: the store changes, `linkedSignal` replaces the draft.
+
+</details>
 
 ## Completion Criteria
 
-- [ ] SignalStore holds profile state and tracks saved vs. current values
-- [ ] Form initializes with data from the store via `linkedSignal`
-- [ ] Form changes are synced back to the store
-- [ ] Save button persists current state as "saved"
-- [ ] Reset button reverts to last saved state
-- [ ] Unsaved changes indicator works correctly
-- [ ] Form validation prevents saving invalid data
+- [ ] Form model is a `linkedSignal` derived from `store.profile()`
+- [ ] No `effect()` and no subscription to keep store and form in sync
+- [ ] Save runs through the submission action and `store.saveProfile()`
+- [ ] After saving the form is not dirty anymore
+- [ ] Reset returns to the persisted profile
+- [ ] A remote update replaces the draft
 
-## Key Concepts
+## Bonus: Pattern B – the Form Creates Data
 
-### linkedSignal vs signal
+`solutions/feedback-form` shows the other direction: nothing to load, the model is a plain `signal()`, the
+submission action hands the value to the store (`submitFeedback`) and resets the form for the next entry.
 
-- `signal()`: Independent writable signal
-- `linkedSignal()`: Writable signal that derives its value from a source and updates when the source changes
+<details>
+<summary>Key Concepts</summary>
 
-### Signal Forms vs Reactive Forms
+| Concept          | `signal()`                   | `linkedSignal()`                                  |
+| ---------------- | ---------------------------- | ------------------------------------------------- |
+| Source           | Independent                  | Derived from another signal                       |
+| Writable         | Yes                          | Yes, until the source changes again               |
+| Use for the form | Create scenarios (Pattern B) | Edit scenarios with data from a store (Pattern A) |
 
-| Aspect | Reactive Forms | Signal Forms |
-|--------|---------------|--------------|
-| Form Creation | `FormBuilder.group()` | `form(model, schema)` |
-| Binding | `formControlName` | `[formField]` |
-| Value Access | `form.value` | `model()` |
-| Validation State | `form.valid` | `form().valid()` |
-| Change Detection | Manual / valueChanges | Automatic via signals |
+| Responsibility  | Store                    | Form                                |
+| --------------- | ------------------------ | ----------------------------------- |
+| Persisted value | `profile()`              |                                     |
+| Draft           |                          | `profileModel()` / `form().value()` |
+| Unsaved changes |                          | `form().dirty()`                    |
+| Saving          | `saving()` (server side) | `form().submitting()` (action)      |
+| Validation      |                          | schema rules                        |
 
-## Hints
+</details>
 
-- `linkedSignal` automatically updates when the source signal changes
-- Use `effect()` for side effects like syncing to the store
-- Check `JSON.stringify` equality to avoid circular updates
-- Signal Forms automatically handle two-way binding
+<details>
+<summary>Solution Files</summary>
 
-## Solution
+- `exercises/05-signal-form-with-store/solution/store-form.component.ts`
+- `exercises/05-signal-form-with-store/solution/store-form.component.html`
+- `exercises/05-signal-form-with-store/solution/feedback.store.ts` / `feedback-form.component.*` (bonus)
+- Running: `http://localhost:4200/solutions/store-form` and `http://localhost:4200/solutions/feedback-form`
 
-The complete solution is available in the `solution/` folder:
-- `contact-profile.store.ts` - NgRx SignalStore implementation
-- `store-form.component.ts` - Component with Signal Forms
-- `store-form.component.html` - Template with form bindings
-- `store-form.component.scss` - Styles
+</details>

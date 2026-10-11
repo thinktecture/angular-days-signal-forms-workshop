@@ -1,9 +1,10 @@
-import { computed } from '@angular/core';
-import { signalStore, withState, withComputed, withMethods, patchState } from '@ngrx/signals';
-import { ContactProfile } from '../../models/forms.models';
+// NgRx SignalStore for Exercise 05. The store owns the *persisted* profile; the form owns the draft.
 
-// Initial state with sample data
-const initialProfile: ContactProfile = {
+import { computed } from '@angular/core';
+import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
+import { ContactProfile } from '@app/models/forms.models';
+
+export const INITIAL_PROFILE: ContactProfile = {
   firstName: 'Max',
   lastName: 'Mustermann',
   email: 'max.mustermann@example.com',
@@ -15,68 +16,34 @@ const initialProfile: ContactProfile = {
 
 interface ContactProfileState {
   profile: ContactProfile;
-  savedProfile: ContactProfile;
-  loading: boolean;
+  saving: boolean;
   lastSaved: Date | null;
 }
 
 export const ContactProfileStore = signalStore(
   withState<ContactProfileState>({
-    profile: initialProfile,
-    savedProfile: initialProfile,
-    loading: false,
+    profile: INITIAL_PROFILE,
+    saving: false,
     lastSaved: null,
   }),
 
-  withComputed((state) => ({
-    fullName: computed(() => `${state.profile().firstName} ${state.profile().lastName}`),
-    hasUnsavedChanges: computed(
-      () => JSON.stringify(state.profile()) !== JSON.stringify(state.savedProfile())
-    ),
-    isValid: computed(() => {
-      const p = state.profile();
-      return p.firstName.trim() !== '' && p.lastName.trim() !== '' && p.email.includes('@');
-    }),
+  withComputed(({ profile }) => ({
+    fullName: computed(() => `${profile().firstName} ${profile().lastName}`),
   })),
 
   withMethods((store) => ({
-    updateProfile(profile: Partial<ContactProfile>) {
+    // Simulates a PUT /api/profile. Resolves when the "server" has stored the profile.
+    async saveProfile(profile: ContactProfile): Promise<void> {
+      patchState(store, { saving: true });
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      patchState(store, { profile, saving: false, lastSaved: new Date() });
+    },
+
+    // Simulates another client changing the data (e.g. a websocket push)
+    simulateRemoteUpdate(): void {
       patchState(store, (state) => ({
-        profile: { ...state.profile, ...profile },
+        profile: { ...state.profile, role: `${state.profile.role} (updated remotely)` },
       }));
     },
-
-    updateField<K extends keyof ContactProfile>(field: K, value: ContactProfile[K]) {
-      patchState(store, (state) => ({
-        profile: { ...state.profile, [field]: value },
-      }));
-    },
-
-    saveProfile() {
-      patchState(store, { loading: true });
-
-      // Simulate async save operation
-      setTimeout(() => {
-        patchState(store, (state) => ({
-          savedProfile: { ...state.profile },
-          loading: false,
-          lastSaved: new Date(),
-        }));
-      }, 500);
-    },
-
-    resetToSaved() {
-      patchState(store, (state) => ({
-        profile: { ...state.savedProfile },
-      }));
-    },
-
-    resetToInitial() {
-      patchState(store, {
-        profile: initialProfile,
-        savedProfile: initialProfile,
-        lastSaved: null,
-      });
-    },
-  }))
+  })),
 );

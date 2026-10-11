@@ -1,3 +1,17 @@
+// Exercise 06: the JSON form definition. Fields and their validation rules live here.
+// See: exercises/06-dynamic-json-form/README.md
+
+import {
+  SchemaPath,
+  SchemaPathTree,
+  email,
+  max,
+  maxLength,
+  min,
+  minLength,
+  required,
+} from '@angular/forms/signals';
+
 export interface FieldDefinition {
   name: string;
   label: string;
@@ -9,6 +23,7 @@ export interface FieldDefinition {
   max?: number;
   options?: { value: string | number; label: string }[];
   placeholder?: string;
+  // TODO (bonus): pattern?: string;
 }
 
 export interface FormDefinition {
@@ -16,6 +31,10 @@ export interface FormDefinition {
   fields: FieldDefinition[];
 }
 
+// The model has no static keys - every field is just a key in a Record.
+export type DynamicFormModel = Record<string, unknown>;
+
+// This could come from an API
 export const FORM_DEFINITION: FormDefinition = {
   title: 'Contact Form',
   fields: [
@@ -42,6 +61,7 @@ export const FORM_DEFINITION: FormDefinition = {
       required: true,
       placeholder: 'your.email@example.com',
     },
+    // TODO 1: Add a field here, e.g. a required "phone" text field
     {
       name: 'age',
       label: 'Age',
@@ -75,3 +95,61 @@ export const FORM_DEFINITION: FormDefinition = {
     },
   ],
 };
+
+// Creates the initial model value from the definition
+export function createInitialModel(definition: FormDefinition): DynamicFormModel {
+  const model: DynamicFormModel = {};
+  for (const field of definition.fields) {
+    switch (field.type) {
+      case 'checkbox':
+        model[field.name] = false;
+        break;
+      case 'number':
+        model[field.name] = null;
+        break;
+      default:
+        model[field.name] = '';
+    }
+  }
+  return model;
+}
+
+// The model is a Record<string, unknown>, so the schema path has no typed keys.
+// This helper narrows a dynamic key to a typed SchemaPath once, so the rules stay type-safe.
+function pathOf<T>(path: SchemaPathTree<DynamicFormModel>, name: string): SchemaPath<T> {
+  return (path as unknown as Record<string, SchemaPath<T>>)[name];
+}
+
+// Translates one field definition into Signal Forms rules
+export function applyFieldRules(
+  path: SchemaPathTree<DynamicFormModel>,
+  field: FieldDefinition,
+): void {
+  if (field.required) {
+    required(pathOf(path, field.name), { message: `${field.label} is required` });
+  }
+  if (field.type === 'email') {
+    email(pathOf<string>(path, field.name), { message: 'Please enter a valid email address' });
+  }
+  if (field.minLength !== undefined) {
+    minLength(pathOf<string>(path, field.name), field.minLength, {
+      message: `Minimum ${field.minLength} characters`,
+    });
+  }
+  if (field.maxLength !== undefined) {
+    maxLength(pathOf<string>(path, field.name), field.maxLength, {
+      message: `Maximum ${field.maxLength} characters`,
+    });
+  }
+  if (field.min !== undefined) {
+    min(pathOf<number | null>(path, field.name), field.min, {
+      message: `Minimum value is ${field.min}`,
+    });
+  }
+  if (field.max !== undefined) {
+    max(pathOf<number | null>(path, field.name), field.max, {
+      message: `Maximum value is ${field.max}`,
+    });
+  }
+  // TODO 2 (bonus): if (field.pattern) pattern(pathOf<string>(path, field.name), new RegExp(field.pattern), { ... })
+}
